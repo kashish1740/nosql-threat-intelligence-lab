@@ -1,5 +1,12 @@
 # Presentation day: start-up checklist
 
+**Submission links** (both always show the latest version):
+- GitHub: https://github.com/kashish1740/nosql-threat-intelligence-lab
+- Docker Hub: https://hub.docker.com/r/kashish1740/threat-intelligence-lab
+
+To publish a change: `git add . && git commit -m "what changed" && git push` in Ubuntu. GitHub updates at once;
+the Action (repo → Actions tab) tests, rebuilds and pushes the Docker Hub image within about 3 minutes.
+
 Everything is already installed and saved: code, MongoDB data, the AI model, imported threat feeds and
 your API keys (`.env`). Docker keeps the data between restarts, so start-up takes about a minute.
 
