@@ -1,0 +1,41 @@
+# Run the dashboard straight from Docker Hub — no build, no source checkout needed.
+#   docker compose -f compose.hub.yaml --profile model up -d
+#   docker compose -f compose.hub.yaml exec ollama ollama pull qwen2.5:1.5b   # once, ~1 GB
+#   open http://localhost:8000
+# The image is rebuilt and published automatically on every push to the GitHub repository:
+#   https://github.com/kashish1740/nosql-threat-intelligence-lab
+services:
+  mongo:
+    image: mongo:7.0
+    volumes: ["mongo-data:/data/db"]
+    # MongoDB Compass: mongodb://localhost:27018
+    ports: ["127.0.0.1:27018:27017"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand({ping:1})"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  app:
+    image: ${APP_IMAGE:-kashish1740/threat-intelligence-lab:latest}
+    pull_policy: always
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
+      # Optional keys for URL threat analysis (create a .env file next to this one; never commit it).
+      ABUSECH_AUTH_KEY: ${ABUSECH_AUTH_KEY:-}
+      VT_API_KEY: ${VT_API_KEY:-}
+      LAB_HOST: host.docker.internal
+      CTI_PUBLIC: ${CTI_PUBLIC:-0}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on:
+      mongo:
+        condition: service_healthy
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [model]
+    volumes: ["ollama-data:/root/.ollama"]
+volumes:
+  mongo-data:
+  ollama-data:

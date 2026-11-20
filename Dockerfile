@@ -11,4 +11,7 @@ COPY requirements.txt requirements-app.txt ./
 RUN pip install --no-cache-dir --default-timeout=120 --retries 8 -r requirements.txt -r requirements-app.txt
 COPY app app
 COPY data data
+# Lab source: the Experiments pages show it, and the Chapter 16 fraud service is imported from it.
+# (compose.yaml also mounts ./labs read-only, so local edits appear without a rebuild.)
+COPY labs labs
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

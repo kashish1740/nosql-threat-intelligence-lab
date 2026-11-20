@@ -2,6 +2,25 @@
 
 A local threat-intelligence web app and 18 NoSQL laboratory chapters using MongoDB, with Cassandra and Neo4j integration exercises.
 
+[![Publish Docker image](https://github.com/kashish1740/nosql-threat-intelligence-lab/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/kashish1740/nosql-threat-intelligence-lab/actions/workflows/docker-publish.yml)
+
+| | Link |
+|---|---|
+| Source code | https://github.com/kashish1740/nosql-threat-intelligence-lab |
+| Docker image | https://hub.docker.com/r/kashish1740/threat-intelligence-lab |
+
+Every push to `main` runs the tests, rebuilds the dashboard image and publishes it to Docker Hub as `latest`
+(plus a `sha-<commit>` tag), so both links always show the current version.
+
+**Run from Docker Hub (no build):**
+
+```bash
+docker compose -f compose.hub.yaml --profile model up -d
+docker compose -f compose.hub.yaml exec ollama ollama pull qwen2.5:1.5b   # once
+```
+
+Then open http://localhost:8000. Building from source and running the lab chapters are described below.
+
 **Presenting on Windows? Start with the [beginner-friendly Windows setup guide](docs/WINDOWS_SETUP.md).** It covers WSL 2, Docker Desktop, configuration, the web demo, all lab topologies, results, and troubleshooting. Run the Bash commands below inside Ubuntu on WSL 2.
 
 Local Linux quick runs have been exercised; Windows and the complete web/model demonstration still need verification on the presentation computer. See [verification status](STATUS.md).
