@@ -1,0 +1,1052 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Threat Intelligence Lab</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f6f7f9;--panel:#ffffff;--panel-2:#f3f4f6;--code:#f6f7f9;--line:#e4e6ea;--line-strong:#d3d6dc;
+  --text:#14161a;--muted:#6b7079;--faint:#9aa0a9;
+  --accent:#2f5bea;--accent-ink:#ffffff;--accent-soft:rgba(47,91,234,.08);
+  --ok:#17803d;--warn:#b25e09;--bad:#c4302b;--idle:#7a808a;
+  --radius:8px;--shadow:0 1px 2px rgba(16,24,40,.04);
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,"Liberation Mono",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#0e0f12;--panel:#15171b;--panel-2:#1c1f24;--code:#111317;--line:#262a31;--line-strong:#333842;
+  --text:#e7e9ec;--muted:#959ba5;--faint:#6b717b;
+  --accent:#7b9bff;--accent-ink:#0b1020;--accent-soft:rgba(123,155,255,.10);
+  --ok:#4cc38a;--warn:#e5a54b;--bad:#f2726b;--idle:#8a909a;--shadow:none;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e0f12;--panel:#15171b;--panel-2:#1c1f24;--code:#111317;--line:#262a31;--line-strong:#333842;
+  --text:#e7e9ec;--muted:#959ba5;--faint:#6b717b;
+  --accent:#7b9bff;--accent-ink:#0b1020;--accent-soft:rgba(123,155,255,.10);
+  --ok:#4cc38a;--warn:#e5a54b;--bad:#f2726b;--idle:#8a909a;--shadow:none;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font:14.5px/1.55 var(--sans);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+code,pre{font-family:var(--mono);font-size:.86em}
+h2,h3{letter-spacing:-.01em}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 16px}
+
+/* App shell: fixed sidebar + aligned content column */
+.app{display:grid;grid-template-columns:264px minmax(0,1fr);min-height:100vh}
+.sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);padding:18px 12px 12px;overflow:hidden}
+.sb-brand{display:flex;align-items:center;gap:.65rem;padding:0 .5rem .9rem;color:var(--text);text-decoration:none!important}
+.sb-brand .mark{width:28px;height:28px;border-radius:7px;background:var(--text);color:var(--panel);display:grid;place-items:center;font-size:.72rem;font-weight:700;flex:none}
+.sb-title{display:block;font-weight:600;font-size:.92rem;line-height:1.2}
+.sb-sub{display:block;font-size:.75rem;color:var(--muted)}
+.sb-nav{display:flex;flex-direction:column;gap:2px;padding:.4rem 0 .8rem;border-bottom:1px solid var(--line)}
+.sb-nav a{display:flex;align-items:center;gap:.65rem;padding:.48rem .6rem;border-radius:6px;color:var(--muted);font-weight:500;text-decoration:none}
+.sb-nav a:hover{background:var(--panel-2);color:var(--text)}
+.sb-nav a[aria-current=page]{background:var(--panel-2);color:var(--text)}
+.sb-nav svg,.btn.icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.sb-section{font-size:.72rem;font-weight:500;color:var(--faint);padding:1rem .6rem .35rem}
+.sidebar .chap-list{flex:1;overflow:auto;margin:0 -4px;padding:0 4px}
+.sb-loading{color:var(--faint);font-size:.8rem;padding:.3rem .6rem}
+.sb-foot{display:flex;flex-direction:column;gap:.35rem;border-top:1px solid var(--line);padding:.8rem .6rem 0;margin-top:.5rem}
+.main-col{min-width:0;display:flex;flex-direction:column}
+.topbar{display:none}
+.page{width:100%;max-width:1180px;margin:0 auto;padding:32px 40px 72px}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:19}
+@media (max-width:960px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;width:280px;z-index:20;transform:translateX(-100%);transition:transform .18s ease;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+  .app.nav-open .sidebar{transform:none}
+  .topbar{display:flex;align-items:center;gap:.6rem;position:sticky;top:0;z-index:10;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 16px;min-height:52px}
+  .topbar .sb-brand{padding:0}
+  .page{padding:20px 16px 56px}
+}
+.btn.icon{padding:0;width:36px;display:inline-grid;place-items:center}
+.pill{display:inline-flex;align-items:center;gap:.45rem;font-size:.8rem;color:var(--muted)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--idle);flex:none}
+.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
+
+/* Page header */
+.page-header{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem 2rem;flex-wrap:wrap;padding-bottom:1.25rem;margin-bottom:1.5rem;border-bottom:1px solid var(--line)}
+.page-header>div:first-child{min-width:0;flex:1 1 420px}
+.crumbs{font-size:.8rem;color:var(--muted);margin-bottom:.35rem;display:flex;gap:.4rem;flex-wrap:wrap}
+.crumbs a{color:var(--muted)}.crumbs a:hover{color:var(--text)}
+.crumbs .sep{color:var(--faint)}
+.page-header h1{margin:0;font-size:1.55rem;line-height:1.25;font-weight:650;letter-spacing:-.02em}
+.page-header .desc{margin:.45rem 0 0;color:var(--muted);max-width:72ch}
+.page-header .meta{display:flex;flex-wrap:wrap;gap:.35rem 1rem;align-items:center;margin-top:.75rem;font-size:.82rem;color:var(--muted)}
+.page-header .meta .sep{width:3px;height:3px;border-radius:50%;background:var(--faint)}
+.ph-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+
+/* Layout grids */
+.grid-main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:1.5rem;align-items:start}
+.grid-main.wide-side{grid-template-columns:minmax(0,1fr) 360px}
+@media (max-width:1100px){.grid-main,.grid-main.wide-side{grid-template-columns:minmax(0,1fr)}}
+.stack{display:flex;flex-direction:column;gap:1.5rem;min-width:0}
+.sticky-side{position:sticky;top:24px}
+@media (max-width:1100px){.sticky-side{position:static}}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.5rem}
+@media (max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1rem 1.1rem;box-shadow:var(--shadow)}
+.kpi .k{font-size:.8rem;color:var(--muted)}
+.kpi .v{font-size:1.6rem;font-weight:650;letter-spacing:-.02em;margin:.2rem 0 .1rem;line-height:1.2}
+.kpi .s{font-size:.8rem;color:var(--muted)}
+
+/* Panels with a title bar */
+.panel.flush{padding:0}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.85rem 1.1rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-head h2{margin:0;font-size:.95rem;font-weight:600}
+.panel-head .count{color:var(--muted);font-weight:400;margin-left:.3rem}
+.panel-body{padding:1rem 1.1rem}
+.toolbar{display:flex;gap:.5rem;flex-wrap:wrap;padding:.85rem 1.1rem;border-bottom:1px solid var(--line)}
+.toolbar .grow{flex:1 1 220px}
+.hint{font-size:.8rem}.hint p{max-width:46ch;color:var(--muted);margin:.4rem 0 0}
+.panel-link{font-size:.82rem;font-weight:500}
+.empty-row{padding:1.25rem 1.1rem;color:var(--muted);font-size:.88rem}
+
+/* Data tables */
+table.grid{width:100%;border-collapse:collapse;font-size:.88rem}
+table.grid th{font-size:.75rem;font-weight:500;color:var(--muted);text-align:left;padding:.55rem 1.1rem;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--panel)}
+table.grid td{padding:.65rem 1.1rem;border-bottom:1px solid var(--line);vertical-align:middle}
+table.grid tr:last-child td{border-bottom:0}
+table.grid tbody tr.click{cursor:pointer}
+table.grid tbody tr.click:hover td{background:var(--panel-2)}
+table.grid tr.group td{background:var(--panel-2);font-size:.75rem;font-weight:500;color:var(--muted);padding:.4rem 1.1rem}
+table.grid .num{font-family:var(--mono);font-size:.78rem;color:var(--faint);width:1%;white-space:nowrap}
+table.grid .right{text-align:right}
+table.grid .nowrap{white-space:nowrap}
+table.grid .title{font-weight:500}
+.table-wrap{overflow:auto}
+@media (max-width:700px){table.grid .hide-sm{display:none}}
+
+/* Key/value list */
+.kv-list{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:.45rem 1rem;font-size:.86rem;margin:0}
+.kv-list dt{color:var(--muted)}.kv-list dd{margin:0;overflow-wrap:anywhere}
+
+/* Source status list */
+.sources{list-style:none;margin:0;padding:0}
+.sources li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.15rem .65rem;padding:.7rem 1.1rem;border-bottom:1px solid var(--line);font-size:.85rem}
+.sources li:last-child{border-bottom:0}
+.sources .dot{margin-top:.45rem}
+.sources .name{font-weight:500}
+.sources .info{grid-column:2;color:var(--muted);font-size:.8rem;overflow-wrap:anywhere}
+.search-hero{display:flex;gap:.5rem;flex-wrap:wrap}
+.search-hero .field{flex:1 1 320px;min-height:42px;font-size:.95rem}
+.search-hero .btn{min-height:42px}
+
+/* Chat panel */
+.chat-panel{padding:0;display:flex;flex-direction:column;max-height:calc(100vh - 140px);position:sticky;top:24px}
+@media (max-width:1100px){.chat-panel{position:static;max-height:none}}
+.chat-panel .chat-log{flex:1;margin:0;padding:1rem 1.1rem;min-height:220px;max-height:none}
+.chat-form{display:flex;gap:.5rem;padding:.85rem 1.1rem 0;border-top:1px solid var(--line)}
+.chat-form .grow{flex:1}
+.chat-note{padding:.4rem 1.1rem .85rem;margin:0}
+.chat-empty{margin:auto 0}
+.sticky-side .cmd code,.panel-body .cmd code{white-space:normal;overflow-wrap:anywhere;word-break:break-all}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.25rem;box-shadow:var(--shadow)}
+.panel h2{margin:0 0 .9rem;font-size:1rem;font-weight:600}
+.grid-2{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:1.25rem;align-items:start}
+@media (max-width:900px){.grid-2{grid-template-columns:minmax(0,1fr)}}
+
+/* Controls */
+.field{background:var(--panel);border:1px solid var(--line-strong);border-radius:6px;padding:.45rem .65rem;min-width:0;min-height:36px}
+.field:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.btn{background:var(--panel);border:1px solid var(--line-strong);border-radius:6px;padding:.4rem .85rem;min-height:36px;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--panel-2)}
+.btn.primary{background:var(--text);color:var(--panel);border-color:var(--text)}
+.btn.primary:hover{opacity:.88;background:var(--text)}
+.btn:disabled{opacity:.55;cursor:wait}
+.btn.small,.cmd button{font-size:.8rem;padding:.2rem .6rem;min-height:28px}
+.row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.row .grow{flex:1 1 200px}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+
+/* Status tags: quiet, sentence case, tinted */
+.badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;font-weight:500;line-height:1;padding:.28rem .5rem;border-radius:4px;
+  background:color-mix(in srgb,currentColor 10%,transparent);text-transform:none;white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.s-passed,.s-Resolved{color:var(--ok)}.s-partial,.s-Evolving{color:var(--warn)}.s-failed,.s-Active{color:var(--bad)}
+.s-blocked,.s-none,.s-Anticipated{color:var(--idle)}
+.summary-chips{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+.chip{font-size:.75rem;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:.1rem .4rem;font-family:var(--mono);color:var(--muted);
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+button.chip{cursor:pointer}button.chip:hover{color:var(--text)}
+
+/* Cards and lists */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.75rem;margin-top:1rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:.85rem .95rem;text-align:left;display:flex;flex-direction:column;gap:.4rem;transition:border-color .12s}
+.card h3{margin:0;font-size:.92rem;font-weight:600;line-height:1.35}
+button.card:hover,.card:hover{border-color:var(--line-strong)}
+.detail{background:var(--panel)!important}
+.detail dl{display:grid;grid-template-columns:max-content 1fr;gap:.4rem 1.25rem;margin:.75rem 0}
+.detail dt{color:var(--muted);font-size:.85rem}.detail dd{margin:0}
+details>summary{cursor:pointer;color:var(--muted)}
+details>summary:hover{color:var(--text)}
+
+/* Chat */
+.chat-log{display:flex;flex-direction:column;gap:1rem;margin-top:1.1rem;max-height:65vh;overflow:auto}
+.msg{padding:0}
+.msg.q{font-weight:600;font-size:.9rem;align-self:flex-end;background:var(--panel-2);border-radius:8px;padding:.45rem .75rem;max-width:85%}
+.msg.a{border-left:2px solid var(--line-strong);padding:.1rem 0 .1rem .9rem}
+.msg .meta{margin-top:.5rem;font-size:.78rem;color:var(--muted);display:flex;gap:.75rem;flex-wrap:wrap}
+
+/* Markdown */
+.md p{margin:.45rem 0}.md ul,.md ol{margin:.45rem 0;padding-left:1.3rem}.md li{margin:.2rem 0}
+.md h1,.md h2,.md h3,.md h4{margin:1.25rem 0 .45rem;line-height:1.3;font-weight:600}.md h1{font-size:1.15rem}.md h2{font-size:1.02rem}.md h3,.md h4{font-size:.95rem}
+.md pre{background:var(--code);border:1px solid var(--line);border-radius:6px;padding:.75rem;overflow:auto}
+.md code{background:var(--panel-2);padding:.05rem .3rem;border-radius:4px}.md pre code{background:none;padding:0}
+.md table{border-collapse:collapse;font-size:.88rem}.md td,.md th{border-bottom:1px solid var(--line);padding:.4rem .6rem;text-align:left}
+
+/* Lab experiments */
+#lab-main,.impl>div{min-width:0}
+.chap-list .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chap-list{display:flex;flex-direction:column;gap:1px}
+.chap-list .group{font-size:.72rem;font-weight:500;color:var(--faint);margin:1rem .55rem .3rem}
+.chap-list button{display:flex;gap:.6rem;align-items:center;background:none;border:0;border-radius:6px;padding:.38rem .55rem;text-align:left;color:var(--muted)}
+.chap-list button:hover{background:var(--panel-2);color:var(--text)}
+.chap-list button[aria-current=true]{background:var(--panel);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+.chap-list .num{font-family:var(--mono);font-size:.75rem;color:var(--faint);width:2rem}
+.chap-list .t{flex:1;font-size:.86rem;line-height:1.3}
+.sdot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+.subtabs{display:flex;gap:1.25rem;flex-wrap:wrap;margin:1.25rem 0 1rem;border-bottom:1px solid var(--line)}
+.subtabs button{background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:.5rem 0;color:var(--muted);font-weight:500}
+.subtabs button:hover{color:var(--text)}
+.subtabs button[aria-selected=true]{color:var(--text);border-color:var(--text)}
+.cmd{display:flex;align-items:center;gap:.5rem;background:var(--code);border:1px solid var(--line);border-radius:6px;padding:.3rem .3rem .3rem .7rem;min-width:0}
+.cmd code{flex:1;overflow:auto;white-space:nowrap}
+.impl{display:grid;grid-template-columns:230px minmax(0,1fr);gap:1.25rem}
+@media (max-width:760px){.impl{grid-template-columns:minmax(0,1fr)}}
+.files{display:flex;flex-direction:column;gap:1px;font-family:var(--mono);font-size:.8rem}
+.files .fgroup{font-family:var(--sans);color:var(--faint);font-size:.72rem;font-weight:500;margin:.9rem 0 .25rem}
+.files button{background:none;border:0;text-align:left;padding:.28rem .45rem;border-radius:5px;overflow-wrap:anywhere;color:var(--muted)}
+.files button:hover{background:var(--panel-2);color:var(--text)}
+.files button[aria-current=true]{background:var(--panel-2);color:var(--text)}
+pre.code{background:var(--code);border:1px solid var(--line);border-radius:6px;padding:.8rem;overflow:auto;max-height:70vh;margin:0;counter-reset:ln;line-height:1.5}
+pre.code span{display:block}
+pre.code span::before{counter-increment:ln;content:counter(ln);display:inline-block;width:2.4rem;margin-right:1rem;text-align:right;color:var(--faint);user-select:none}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:0;margin:1rem 0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--panel)}
+.stat{padding:.7rem .9rem;border-right:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 -1px -1px 0}
+.stat .k{font-size:.75rem;color:var(--muted)}
+.stat .v{font-weight:600;margin-top:.15rem;overflow-wrap:anywhere}
+.event{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin:.5rem 0}
+.event>summary{padding:.6rem .85rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;color:var(--text);list-style:none}
+.event>summary::-webkit-details-marker{display:none}
+.event>summary::before{content:"";width:6px;height:6px;border-right:1.5px solid var(--faint);border-bottom:1.5px solid var(--faint);transform:rotate(-45deg);margin-right:.2rem;transition:transform .12s}
+.event[open]>summary::before{transform:rotate(45deg)}
+.event .ename{font-family:var(--mono);font-weight:600;font-size:.85rem}
+.event .body{padding:0 .85rem .85rem;overflow:auto}
+.event.flag{box-shadow:inset 3px 0 0 var(--warn)}.event.fail{box-shadow:inset 3px 0 0 var(--bad)}
+table.data{border-collapse:collapse;font-size:.82rem;margin:.3rem 0;width:100%}
+table.data th,table.data td{border-bottom:1px solid var(--line);padding:.45rem .6rem;text-align:left;vertical-align:top}
+table.data th{color:var(--muted);font-weight:500;font-size:.75rem;background:transparent}
+table.data tr:last-child td{border-bottom:0}
+table.kv{width:auto}table.kv th{white-space:nowrap}
+.artifacts img{max-width:100%;border-radius:6px;border:1px solid var(--line);background:#fff;margin:.5rem 0}
+pre.log{background:var(--code);border:1px solid var(--line);border-radius:6px;padding:.8rem;max-height:70vh;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0;font-size:.8rem}
+
+/* Experiment 7 threat analysis */
+.verdict{border-radius:var(--radius);padding:1rem 1.2rem;border:1px solid var(--line);box-shadow:inset 4px 0 0 currentColor;background:var(--panel);
+  display:flex;flex-wrap:wrap;gap:.35rem 1.25rem;align-items:baseline;margin:1rem 0}
+.verdict .label{font-size:1.35rem;font-weight:650;letter-spacing:-.01em}
+.verdict .score{font-family:var(--mono);font-size:.9rem;color:var(--muted)}
+.verdict code{color:var(--muted)!important;font-size:.82rem}
+.v-Malicious{color:var(--bad)}.v-Suspicious{color:var(--warn)}.v-Low-risk{color:var(--accent)}.v-No-known-threats{color:var(--ok)}
+.badge.v-Malicious,.badge.v-Suspicious,.badge.v-Low-risk,.badge.v-No-known-threats{box-shadow:none}
+.feeds{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.75rem}
+.feeds .stat{border:1px solid var(--line);border-radius:var(--radius);margin:0;background:var(--panel)}
+.st-hit{color:var(--bad)}.st-no_match,.st-ok{color:var(--ok)}.st-not_configured,.st-not_synced{color:var(--idle)}.st-error{color:var(--warn)}
+.report h3{margin:2rem 0 .75rem;font-size:.95rem;font-weight:600}
+.notice{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:.75rem .9rem;font-size:.85rem;line-height:1.7}
+.notice .row{gap:.4rem .6rem}
+.history{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--panel)}
+.history button{display:flex;gap:.75rem;align-items:center;width:100%;background:none;border:0;border-bottom:1px solid var(--line);padding:.55rem .8rem;text-align:left}
+.history button:last-child{border-bottom:0}
+.history button:hover{background:var(--panel-2)}
+.history .u{flex:1;font-family:var(--mono);font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history p{margin:.7rem .8rem}
+@media print{.sidebar,.topbar,.subtabs,.no-print,.page-header .ph-actions{display:none!important}.app{display:block}body{background:#fff;color:#000}.panel,.stat,.event{background:#fff!important;border-color:#bbb!important;box-shadow:none!important}}
+.empty{color:var(--muted);padding:2.5rem;text-align:center}
+.error{color:var(--bad)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <a class="sb-brand" href="#home">
+      <span class="mark" aria-hidden="true">TI</span>
+      <span><span class="sb-title">Threat Intelligence Lab</span><span class="sb-sub">NoSQL · MongoDB project</span></span>
+    </a>
+    <nav class="sb-nav">
+      <a href="#home" data-route="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>Overview</a>
+      <a href="#assistant" data-route="assistant"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 4z"/></svg>Threat Assistant</a>
+      <a href="#analysis" data-route="analysis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>URL Threat Analysis</a>
+      <a href="#lab" data-route="lab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></svg>Experiments</a>
+      <a href="#tour" data-route="tour"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Course tour</a>
+    </nav>
+    <nav class="sb-nav sb-nav-2" aria-label="Platform">
+      <a href="#cases" data-route="cases" data-needs="org"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4z"/><path d="M9 7V5h6v2"/></svg>Cases</a>
+      <a href="#ask" data-route="ask" data-needs="user"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Ask the reports</a>
+      <a href="#moderation" data-route="moderation" data-needs="moderator,admin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/></svg>Moderation</a>
+      <a href="#ops" data-route="ops" data-needs="admin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>Operations</a>
+    </nav>
+    <div class="sb-section">Lab chapters</div>
+    <div class="chap-list" id="chapter-list"><div class="sb-loading">Loading…</div></div>
+    <div class="sb-foot" aria-label="Service status">
+      <div id="identity" class="identity"></div>
+      <span class="pill"><span class="dot" id="db-dot"></span><span id="db-text">MongoDB</span></span>
+      <span class="pill"><span class="dot" id="model-dot"></span><span id="model-text">Model</span></span>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <div class="main-col">
+    <header class="topbar">
+      <button class="btn icon" id="menu-btn" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <a class="sb-brand" href="#home"><span class="mark" aria-hidden="true">TI</span><span class="sb-title">Threat Intelligence Lab</span></a>
+    </header>
+
+    <main class="page">
+      <!-- Overview -->
+      <section id="view-home"></section>
+
+      <!-- Threat assistant -->
+      <section id="view-assistant" hidden>
+        <div class="page-header">
+          <div>
+            <div class="crumbs">Dataset</div>
+            <h1>Threat Assistant</h1>
+            <p class="desc">Search 12 classroom Linux advisories stored in MongoDB and ask questions answered by a local model from those records only.</p>
+          </div>
+        </div>
+        <div class="grid-main">
+          <div class="stack">
+            <section class="panel flush">
+              <div class="panel-head">
+                <h2>Advisories <span class="count" id="record-count"></span></h2>
+                <details class="hint"><summary>Status meanings</summary>
+                  <p>Anticipated: assessing potential exposure. Active: simulated affected deployment needs attention. Evolving: assessment or mitigation is ongoing. Resolved: scenario mitigation has been verified. These are fictional classroom observations, not claims about current global exploitation.</p>
+                </details>
+              </div>
+              <form id="search" class="toolbar">
+                <input id="query" class="field grow" aria-label="Search advisories" placeholder="Search package or advisory">
+                <select id="status" class="field" aria-label="Lifecycle">
+                  <option value="">All statuses</option><option>Anticipated</option><option>Active</option><option>Evolving</option><option>Resolved</option>
+                </select>
+                <button class="btn primary">Search</button>
+              </form>
+              <div id="records"></div>
+            </section>
+            <section id="detail" class="panel detail" hidden></section>
+          </div>
+          <section class="panel chat-panel">
+            <div class="panel-head">
+              <h2>Ask the dataset</h2>
+              <button id="new-chat" type="button" class="btn small">New chat</button>
+            </div>
+            <div id="answers" class="chat-log" aria-live="polite">
+              <p class="muted small chat-empty">Try: “Which active Linux threats in this dataset need attention?”</p>
+            </div>
+            <form id="chat" class="chat-form">
+              <input id="message" class="field grow" aria-label="Question" required placeholder="Ask about the advisories…">
+              <button id="send" class="btn primary">Ask</button>
+            </form>
+            <p class="small muted chat-note">Local model · answers cite retrieved records · one question at a time</p>
+          </section>
+        </div>
+      </section>
+
+      <!-- URL threat analysis (Experiment 7) -->
+      <section id="view-analysis" hidden></section>
+
+      <!-- Experiments -->
+      <section id="view-lab" hidden><div id="lab-main"></div></section>
+
+      <!-- Chapters 13–18 platform pages: tour, cases, ask, moderation, operations (app/static/platform.js) -->
+      <section id="view-platform" hidden></section>
+    </main>
+  </div>
+</div>
+
+<script src="/static/platform.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+function h(tag, attrs, ...children){
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})){
+    if (v == null || v === false) continue;
+    if (k === "class") n.className = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of children.flat()){ if (c == null || c === false) continue; n.append(c instanceof Node ? c : String(c)); }
+  return n;
+}
+async function api(path, options){
+  const opts = {...(options || {})};
+  let session = null;
+  try { session = localStorage.getItem("cti_session"); } catch (e) {}
+  if (session) opts.headers = {...(opts.headers || {}), "X-Session": session};
+  const r = await fetch(path, opts);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok){
+    // Lab endpoints answer {message, start_command}; others a plain string. Keep both for the page.
+    const d = data.detail;
+    const err = Error(typeof d === "object" && d ? (d.message || JSON.stringify(d)) : (d || r.statusText));
+    err.status = r.status; err.info = typeof d === "object" ? d : null;
+    err.retryAfter = r.headers.get("Retry-After");
+    throw err;
+  }
+  return data;
+}
+
+/* ---------- Safe markdown: escapes everything, then adds a small set of formatting ---------- */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function inline(s){
+  const codes = [];
+  s = s.replace(/`([^`]+)`/g, (_, c) => { codes.push(c); return "\u0000" + (codes.length - 1) + "\u0000"; });
+  s = esc(s);
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (_, t, u) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`);
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, t, u) => `${t} <code>${u}</code>`);
+  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/__([^_]+)__/g, "<strong>$1</strong>");
+  s = s.replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g, "$1<em>$2</em>");
+  return s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${esc(codes[+i])}</code>`);
+}
+function markdown(text){
+  const lines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
+  const out = []; let i = 0;
+  while (i < lines.length){
+    const line = lines[i];
+    if (/^```/.test(line)){
+      const body = []; i++;
+      while (i < lines.length && !/^```/.test(lines[i])) body.push(lines[i++]);
+      i++; out.push(`<pre><code>${esc(body.join("\n"))}</code></pre>`); continue;
+    }
+    const head = line.match(/^(#{1,4})\s+(.*)$/);
+    if (head){ out.push(`<h${head[1].length}>${inline(head[2])}</h${head[1].length}>`); i++; continue; }
+    if (/^\s*\|.*\|\s*$/.test(line)){
+      const rows = [];
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) rows.push(lines[i++]);
+      const cells = r => r.trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+      const body = rows.filter(r => !/^\s*\|[\s:|-]+\|\s*$/.test(r));
+      out.push("<table>" + body.map((r, n) => "<tr>" + cells(r).map(c => n ? `<td>${inline(c)}</td>` : `<th>${inline(c)}</th>`).join("") + "</tr>").join("") + "</table>");
+      continue;
+    }
+    if (/^\s*([-*+]|\d+[.)])\s+/.test(line)){
+      const ordered = /^\s*\d+[.)]\s+/.test(line); const items = [];
+      const start = ordered ? parseInt(line.trim(), 10) : 1;
+      const sameKind = l => ordered ? /^\s*\d+[.)]\s+/.test(l) : /^\s*[-*+]\s+/.test(l);
+      while (i < lines.length && sameKind(lines[i])){
+        let item = lines[i++].replace(/^\s*([-*+]|\d+[.)])\s+/, "");
+        while (i < lines.length && /^\s{2,}\S/.test(lines[i]) && !/^\s*([-*+]|\d+[.)])\s+/.test(lines[i])) item += " " + lines[i++].trim();
+        items.push(`<li>${inline(item)}</li>`);
+        // Models often leave a blank line between items; keep them in one list.
+        let j = i; while (j < lines.length && !lines[j].trim()) j++;
+        if (j > i && j < lines.length && sameKind(lines[j])) i = j;
+      }
+      out.push(ordered ? `<ol start="${start}">${items.join("")}</ol>` : `<ul>${items.join("")}</ul>`); continue;
+    }
+    if (!line.trim()){ i++; continue; }
+    const para = [];
+    while (i < lines.length && lines[i].trim() && !/^(```|#{1,4}\s|\s*([-*+]|\d+[.)])\s+|\s*\|)/.test(lines[i])) para.push(lines[i++]);
+    out.push(`<p>${inline(para.join(" "))}</p>`);
+  }
+  const div = h("div", {class: "md"}); div.innerHTML = out.join(""); return div;
+}
+
+/* ---------- Health ---------- */
+api("/api/health").then(s => {
+  $("db-dot").className = "dot " + (s.database === "available" ? "ok" : "bad");
+  $("db-text").textContent = "MongoDB";
+  $("db-text").parentElement.title = "MongoDB: " + s.database;
+  $("model-dot").className = "dot " + (s.model === "available" ? "ok" : "bad");
+  $("model-text").textContent = s.model_tag;
+  $("model-text").parentElement.title = "Local model " + s.model_tag + ": " + s.model;
+}).catch(() => { $("db-text").textContent = "Health check failed"; $("db-dot").className = "dot bad"; });
+
+/* ---------- Layout helpers ---------- */
+function pageHeader({crumbs = [], title, desc, meta = [], actions = []}){
+  return h("div", {class: "page-header"},
+    h("div", {},
+      crumbs.length ? h("div", {class: "crumbs"}, crumbs.flatMap((c, i) => [i ? h("span", {class: "sep"}, "/") : null,
+        c.href ? h("a", {href: c.href}, c.label) : h("span", {}, c.label)])) : null,
+      h("h1", {}, title),
+      desc ? h("p", {class: "desc"}, desc) : null,
+      meta.length ? h("div", {class: "meta"}, meta.filter(Boolean).flatMap((m, i) => [i ? h("span", {class: "sep"}) : null, m])) : null),
+    actions.length ? h("div", {class: "ph-actions"}, actions) : null);
+}
+function panel(title, extra, ...body){
+  return h("section", {class: "panel flush"}, h("div", {class: "panel-head"}, h("h2", {}, title), extra || null), ...body);
+}
+const badge = (status, text) => h("span", {class: "badge s-" + status}, text || (status === "none" ? "not run" : status));
+function gridTable(columns, rows, onRow){
+  if (!rows.length) return h("div", {class: "empty-row"}, "Nothing to show yet.");
+  return h("div", {class: "table-wrap"}, h("table", {class: "grid"},
+    h("thead", {}, h("tr", {}, columns.map(c => h("th", {class: c.cls || ""}, c.label)))),
+    h("tbody", {}, rows.map(r => r.__group ? h("tr", {class: "group"}, h("td", {colspan: columns.length}, r.__group)) :
+      h("tr", {class: onRow ? "click" : "", onclick: onRow ? () => onRow(r) : null}, columns.map(c => h("td", {class: c.cls || ""}, c.render(r))))))));
+}
+
+/* ---------- Threat assistant ---------- */
+function showDetail(r){
+  const d = $("detail"); d.hidden = false;
+  d.replaceChildren(
+    h("div", {class: "panel-head", style: "margin:-1.1rem -1.25rem 1rem"}, h("h2", {}, r.title), badge(r.status)),
+    h("dl", {class: "kv-list"},
+      h("dt", {}, "Record"), h("dd", {}, h("code", {}, r._id)),
+      h("dt", {}, "Package"), h("dd", {}, r.package),
+      h("dt", {}, "Platform"), h("dd", {}, r.platform || ""),
+      h("dt", {}, "Source date"), h("dd", {}, r.source_date || ""),
+      h("dt", {}, "Summary"), h("dd", {}, r.summary || ""),
+      h("dt", {}, "Mitigation"), h("dd", {}, r.mitigation || ""),
+      h("dt", {}, "Scenario"), h("dd", {}, (r.classroom_observation || {}).description || "")),
+    h("div", {class: "row", style: "margin-top:1rem"}, h("a", {class: "btn small", href: r.source, target: "_blank", rel: "noopener"}, "Original advisory ↗"),
+      h("a", {class: "btn small primary", href: "#cases?ref=" + encodeURIComponent("advisory:" + r._id) + "&title=" + encodeURIComponent(r.title)}, "Open case")),
+    h("details", {class: "small", style: "margin-top:.8rem"}, h("summary", {}, "Raw MongoDB document"), h("pre", {class: "log"}, JSON.stringify(r, null, 2))));
+  d.scrollIntoView({behavior: "smooth", block: "nearest"});
+}
+async function search(){
+  try {
+    const rows = await api("/api/threats?" + new URLSearchParams({q: $("query").value, status: $("status").value}));
+    $("record-count").textContent = rows.length;
+    $("records").replaceChildren(gridTable([
+      {label: "Advisory", cls: "title", render: r => r.title},
+      {label: "Package", cls: "hide-sm", render: r => h("code", {}, r.package)},
+      {label: "Published", cls: "nowrap hide-sm", render: r => r.source_date || "—"},
+      {label: "Status", render: r => badge(r.status)},
+      {label: "", cls: "right", render: () => h("span", {class: "muted small"}, "View →")}], rows, showDetail));
+  } catch (e) { $("records").replaceChildren(h("div", {class: "empty-row error"}, e.message)); }
+}
+$("search").onsubmit = e => { e.preventDefault(); search(); };
+$("status").onchange = search;
+
+let cid = null;
+try { cid = sessionStorage.getItem("conversation"); } catch (e) {}
+$("new-chat").onclick = () => { cid = null; try { sessionStorage.removeItem("conversation"); } catch (e) {}
+  $("answers").replaceChildren(h("p", {class: "muted small chat-empty"}, "Try: “Which active Linux threats in this dataset need attention?”")); };
+$("chat").onsubmit = async e => {
+  e.preventDefault();
+  const question = $("message").value.trim(); if (!question) return;
+  $("send").disabled = true;
+  document.querySelector(".chat-empty")?.remove();
+  $("answers").append(h("div", {class: "msg q"}, question));
+  const box = h("div", {class: "msg a"}, h("span", {class: "muted"}, "Thinking… (local CPU model, may take ~30 s)"));
+  $("answers").append(box); box.scrollIntoView({block: "nearest"});
+  try {
+    const r = await api("/api/chat", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({message: question, conversation_id: cid})});
+    cid = r.conversation_id; try { sessionStorage.setItem("conversation", cid); } catch (e) {}
+    box.replaceChildren(markdown(r.answer), h("div", {class: "meta"},
+      h("span", {}, r.model_generated ? "Generated by local model" : "Dataset evidence check"),
+      ...r.retrieved_sources.map(s => h("a", {href: s.url, target: "_blank", rel: "noopener", title: s.title}, s.id))));
+    $("message").value = "";
+  } catch (err) { box.replaceChildren(h("p", {class: "error"}, err.message)); }
+  finally { $("send").disabled = false; box.scrollIntoView({block: "nearest"}); }
+};
+search();
+
+/* ---------- Lab experiments ---------- */
+const TOPOLOGY_LABEL = {standalone: "Standalone server", replica: "Replica set", shards: "Sharded cluster", auth: "Auth + TLS", secure: "Secure replica set", polyglot: "MongoDB + Cassandra + Neo4j"};
+let chapters = [], current = null, currentTab = "overview";
+const statusOf = c => c.latest ? c.latest.status : "none";
+const runLabel = id => id.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2}).*$/, "$1-$2-$3 $4:$5:$6 UTC");
+
+async function loadChapters(){
+  if (chapters.length) return;
+  chapters = await api("/api/experiments");
+  const list = $("chapter-list"); list.replaceChildren();
+  let group = null;
+  for (const c of chapters){
+    if (c.topology !== group){ group = c.topology; list.append(h("div", {class: "group"}, TOPOLOGY_LABEL[group] || group)); }
+    list.append(h("button", {"data-ch": c.id, title: shortTitle(c) + " — " + statusOf(c), onclick: () => go(c.id)},
+      h("span", {class: "num"}, c.id.slice(2)), h("span", {class: "t"}, shortTitle(c)), h("span", {class: "sdot s-" + statusOf(c)})));
+  }
+}
+const shortTitle = c => c.title.replace(/^Chapter \d+:\s*/, "");
+const statusCounts = () => { const n = {}; chapters.forEach(c => n[statusOf(c)] = (n[statusOf(c)] || 0) + 1); return n; };
+
+function go(ch, tab){ location.hash = ch ? `#lab/${ch}${tab ? "/" + tab : ""}` : "#lab"; }
+const defaultTab = () => "overview";
+
+function overview(){
+  const rows = []; let group = null;
+  for (const c of chapters){
+    if (c.topology !== group){ group = c.topology; rows.push({__group: TOPOLOGY_LABEL[group] || group}); }
+    rows.push(c);
+  }
+  const counts = statusCounts();
+  $("lab-main").replaceChildren(
+    pageHeader({crumbs: [{label: "Lab"}], title: "Experiments",
+      desc: "Eighteen MongoDB lab chapters. Each runs against its own Docker topology and saves its evidence as results/chNN/<run>/result.json.",
+      meta: Object.entries(counts).map(([s, n]) => badge(s, `${n} ${s === "none" ? "not run" : s}`))}),
+    panel("All chapters", h("span", {class: "muted small"}, "Grouped by MongoDB topology"),
+      gridTable([
+        {label: "#", cls: "num", render: c => c.id.slice(2)},
+        {label: "Experiment", cls: "title", render: c => shortTitle(c)},
+        {label: "Runs", cls: "hide-sm nowrap", render: c => String(c.run_count)},
+        {label: "Last run", cls: "hide-sm nowrap muted", render: c => c.latest ? runLabel(c.latest.id).slice(0, 16) : "—"},
+        {label: "Status", cls: "right", render: c => badge(statusOf(c))}], rows, c => go(c.id))));
+}
+
+function copyButton(text, label){
+  const b = h("button", {class: "btn small", type: "button"}, label || "Copy");
+  b.onclick = async () => { try { await navigator.clipboard.writeText(text); b.textContent = "Copied"; } catch (e) { b.textContent = "Select & copy"; } setTimeout(() => b.textContent = label || "Copy", 1500); };
+  return b;
+}
+function firstParagraph(md){
+  const lines = String(md || "").split("\n").map(l => l.trim());
+  const p = lines.find(l => l && !l.startsWith("#") && !l.startsWith("```") && !l.startsWith("|"));
+  return (p || "").replace(/\*\*|__|`/g, "");
+}
+
+async function showChapter(ch, tab){
+  const main = $("lab-main");
+  main.replaceChildren(h("div", {class: "empty"}, "Loading " + ch.toUpperCase() + "…"));
+  let data;
+  try { data = await api("/api/experiments/" + ch); } catch (e) { main.replaceChildren(h("div", {class: "panel error"}, e.message)); return; }
+  current = data; currentTab = tab;
+  const latest = data.runs[0];
+  const tabs = [["overview", "Overview"], ["implementation", "Implementation"], ["results", `Results · ${data.runs.length}`], ["logs", `Logs · ${data.logs.length}`]];
+  const body = h("div", {});
+  const actions = [copyButton(data.command, "Copy run command")];
+  if (ch === "ch07") actions.unshift(h("a", {class: "btn primary", href: "#analysis"}, "Open URL Threat Analysis"));
+  const live = {ch13: ["#ops/deployment", "Open deployment view"], ch14: ["#ops/monitoring", "Open monitoring & backups"], ch15: ["#cases", "Open cases"],
+                ch16: ["#moderation/fraud", "Open fraud review"], ch17: ["#ask", "Open Ask"], ch18: ["#moderation/fp", "Open false-positive review"]}[ch];
+  if (live) actions.unshift(h("a", {class: "btn primary", href: live[0]}, live[1]));
+  main.replaceChildren(
+    pageHeader({crumbs: [{label: "Experiments", href: "#lab"}, {label: "Chapter " + Number(ch.slice(2))}],
+      title: shortTitle(data), desc: firstParagraph(data.readme.replace(/^#.*\n/, "")),
+      meta: [latest ? badge(latest.status) : badge("none"), TOPOLOGY_LABEL[data.topology] || data.topology,
+        `${data.activities.length} activit${data.activities.length === 1 ? "y" : "ies"}`, latest ? "Last run " + runLabel(latest.id).slice(0, 16) : "Never run"],
+      actions}),
+    h("div", {class: "subtabs", role: "tablist"}, tabs.map(([id, label]) =>
+      h("button", {role: "tab", "aria-selected": String(id === tab), onclick: () => go(ch, id)}, label))),
+    body);
+  ({overview: renderOverview, implementation: renderImplementation, results: renderResults, logs: renderLogs}[tab] || renderOverview)(data, body);
+}
+
+function renderOverview(data, body){
+  const latest = data.runs[0];
+  const main = h("div", {class: "stack"});
+  // The header already shows the README's first paragraph; don't repeat it in the body.
+  let readme = data.readme.replace(/^#.*\n/, "");
+  const lead = readme.split("\n").find(l => l.trim() && !l.trim().startsWith("#"));
+  if (lead && !lead.trim().startsWith("```")) readme = readme.replace(lead, "");
+  main.append(h("section", {class: "panel"}, markdown(readme)));
+  if (data.activities.length){
+    main.append(panel("Activities", h("span", {class: "muted small"}, data.activities.length + " total"),
+      ...data.activities.map(a => h("details", {class: "event", style: "margin:0;border:0;border-bottom:1px solid var(--line);border-radius:0", open: data.activities.length <= 2},
+        h("summary", {}, h("span", {class: "ename"}, a.name.replace(/^activity_(\d+)_/, "$1 · ").replace(/_/g, " ")), h("span", {class: "muted small"}, a.files.length + " files")),
+        h("div", {class: "body"}, a.readme ? markdown(a.readme) : h("p", {class: "muted"}, "No README for this activity."),
+          h("button", {class: "btn small", onclick: () => { pendingFile = a.files.find(f => f.endsWith("run.py")) || a.files[0]; go(data.id, "implementation"); }}, "View code"))))));
+  }
+  const c = data.compass;
+  const side = h("div", {class: "stack sticky-side"},
+    panel("Run this experiment", null, h("div", {class: "panel-body"},
+      h("p", {class: "small muted", style: "margin:0 0 .5rem"}, "From the project root in Ubuntu:"),
+      h("div", {class: "cmd"}, h("code", {}, data.command), copyButton(data.command)),
+      h("p", {class: "small muted", style: "margin:.75rem 0 .5rem"}, "Stop the topology afterwards:"),
+      h("div", {class: "cmd"}, h("code", {}, data.stop_command), copyButton(data.stop_command)))),
+    c ? panel("Inspect in MongoDB Compass", null, h("div", {class: "panel-body"},
+      h("div", {class: "cmd"}, h("code", {}, c.uri), copyButton(c.uri)),
+      h("dl", {class: "kv-list", style: "margin-top:.85rem"},
+        h("dt", {}, "Database"), h("dd", {}, h("code", {}, c.database)),
+        h("dt", {}, "Note"), h("dd", {class: "muted"}, c.note)),
+      h("p", {class: "small muted", style: "margin:.75rem 0 0"}, "The database keeps running after the lab finishes, so connect any time before stopping it."))) : null,
+    panel("Latest run", latest ? h("a", {class: "panel-link", href: `#lab/${data.id}/results`}, "All results →") : null, h("div", {class: "panel-body"},
+      latest ? h("dl", {class: "kv-list"},
+        h("dt", {}, "Status"), h("dd", {}, badge(latest.status)),
+        h("dt", {}, "When"), h("dd", {}, runLabel(latest.id)),
+        h("dt", {}, "Mode"), h("dd", {}, latest.mode || "—"),
+        h("dt", {}, "Events"), h("dd", {}, String(latest.events)),
+        h("dt", {}, "Evidence"), h("dd", {}, h("code", {}, `results/${data.id}/${latest.id}/`)))
+        : h("p", {class: "muted small", style: "margin:0"}, "No saved runs yet."))));
+  body.append(h("div", {class: "grid-main wide-side"}, main, side));
+}
+
+let pendingFile = null;
+function renderImplementation(data, body){
+  const viewer = h("div", {}, h("p", {class: "muted"}, "Select a file."));
+  const fileButtons = [];
+  async function open(path, btn){
+    fileButtons.forEach(b => b.removeAttribute("aria-current")); if (btn) btn.setAttribute("aria-current", "true");
+    viewer.replaceChildren(h("p", {class: "muted"}, "Loading " + path + "…"));
+    try {
+      const f = await api(`/api/experiments/${data.id}/source?` + new URLSearchParams({path}));
+      if (path.endsWith(".md")) { viewer.replaceChildren(h("div", {class: "small muted"}, path), markdown(f.content)); return; }
+      const pre = h("pre", {class: "code"}); f.content.replace(/\n$/, "").split("\n").forEach(l => pre.append(h("span", {}, l || " ")));
+      viewer.replaceChildren(h("div", {class: "row", style: "justify-content:space-between;margin-bottom:.4rem"}, h("code", {}, `labs/${data.id}/${path}`), copyButton(f.content)), pre);
+    } catch (e) { viewer.replaceChildren(h("p", {class: "error"}, e.message)); }
+  }
+  const files = h("div", {class: "files"});
+  const add = (path, label) => { const b = h("button", {title: path, onclick: () => open(path, b)}, label || path); fileButtons.push(b); files.append(b); return b; };
+  files.append(h("div", {class: "fgroup"}, "Chapter"));
+  data.files.forEach(f => add(f));
+  for (const a of data.activities){
+    files.append(h("div", {class: "fgroup"}, a.name.replace(/^activity_/, "activity ")));
+    a.files.forEach(f => add(f, f.slice(a.name.length + 1)));
+  }
+  body.append(h("div", {class: "impl"}, files, viewer));
+  const first = pendingFile || data.files.find(f => f === "exercise.py") || data.files[0];
+  pendingFile = null;
+  const idx = [...data.files, ...data.activities.flatMap(a => a.files)].indexOf(first);
+  if (first) open(first, fileButtons[idx]);
+}
+
+function cell(v){
+  if (v == null) return h("span", {class: "muted"}, "—");
+  if (typeof v !== "object") return String(v);
+  const s = JSON.stringify(v); return s.length > 160 ? s.slice(0, 160) + "…" : s;
+}
+function renderValue(v, depth){
+  if (v == null || typeof v !== "object") return h("span", {}, v == null ? "—" : String(v));
+  if (Array.isArray(v)){
+    if (!v.length) return h("span", {class: "muted"}, "[] (empty)");
+    if (v.every(x => x && typeof x === "object" && !Array.isArray(x))){
+      const keys = [...new Set(v.flatMap(Object.keys))].slice(0, 14);
+      const rows = v.slice(0, 100);
+      return h("div", {style: "overflow:auto"}, h("table", {class: "data"},
+        h("tr", {}, keys.map(k => h("th", {}, k))),
+        rows.map(r => h("tr", {}, keys.map(k => h("td", {}, cell(r[k])))))),
+        v.length > rows.length ? h("div", {class: "small muted"}, `Showing ${rows.length} of ${v.length} rows`) : null);
+    }
+    const s = v.slice(0, 60).map(x => typeof x === "object" ? JSON.stringify(x) : String(x)).join(", ");
+    return h("span", {}, s + (v.length > 60 ? ` … (${v.length} items)` : ""));
+  }
+  if (depth > 2) return h("pre", {class: "log", style: "max-height:300px"}, JSON.stringify(v, null, 2));
+  return h("table", {class: "data kv"}, Object.entries(v).map(([k, x]) => h("tr", {}, h("th", {}, k), h("td", {}, renderValue(x, depth + 1)))));
+}
+function renderEvent(e, index){
+  const {name, mode, ...rest} = e;
+  const scalars = Object.entries(rest).filter(([, v]) => v == null || typeof v !== "object").slice(0, 4);
+  const flag = /blocked|gap|fail|error/i.test(name);
+  return h("details", {class: "event" + (/fail|error/i.test(name) ? " fail" : flag ? " flag" : ""), open: index < 3 || flag},
+    h("summary", {}, h("span", {class: "muted small"}, "#" + (index + 1)), h("span", {class: "ename"}, name),
+      scalars.map(([k, v]) => h("span", {class: "chip", title: k + ": " + v}, k + ": " + (v == null ? "—" : v)))),
+    h("div", {class: "body"}, Object.keys(rest).length ? renderValue(rest, 0) : h("span", {class: "muted"}, "No extra fields")));
+}
+
+async function renderResults(data, body){
+  if (!data.runs.length){ body.append(h("div", {class: "empty"}, "No saved runs yet. Run: ", h("code", {}, data.command))); return; }
+  const sel = h("select", {class: "field grow", "aria-label": "Run"},
+    data.runs.map(r => h("option", {value: r.id}, `${runLabel(r.id)} — ${r.status} · ${r.mode}${r.activity && r.activity !== "all" ? " · activity " + r.activity : ""}`)));
+  const filter = h("input", {class: "field grow", placeholder: "Filter events by name…", "aria-label": "Filter events"});
+  const out = h("div", {});
+  body.append(h("div", {class: "row"}, h("label", {class: "small muted"}, "Run"), sel, filter), out);
+  let events = [];
+  const draw = () => {
+    const q = filter.value.trim().toLowerCase();
+    const list = out.querySelector(".events"); if (!list) return;
+    list.replaceChildren(...events.map((e, i) => [e, i]).filter(([e]) => !q || e.name.toLowerCase().includes(q)).map(([e, i]) => renderEvent(e, i)));
+  };
+  async function load(){
+    out.replaceChildren(h("p", {class: "muted"}, "Loading run…"));
+    try {
+      const r = await api(`/api/experiments/${data.id}/runs/${sel.value}`);
+      const res = r.result; events = res.events || [];
+      const names = {}; events.forEach(e => names[e.name] = (names[e.name] || 0) + 1);
+      const images = r.artifacts.filter(a => /\.(png|jpe?g|svg)$/i.test(a));
+      const others = r.artifacts.filter(a => !images.includes(a));
+      out.replaceChildren(...[
+        h("div", {class: "stats"},
+          h("div", {class: "stat"}, h("div", {class: "k"}, "Status"), h("div", {class: "v s-" + res.status}, res.status)),
+          h("div", {class: "stat"}, h("div", {class: "k"}, "Mode"), h("div", {class: "v"}, res.mode)),
+          h("div", {class: "stat"}, h("div", {class: "k"}, "Activity"), h("div", {class: "v"}, res.activity)),
+          h("div", {class: "stat"}, h("div", {class: "k"}, "Elapsed"), h("div", {class: "v"}, res.elapsed_seconds != null ? res.elapsed_seconds.toFixed(1) + " s" : "—")),
+          h("div", {class: "stat"}, h("div", {class: "k"}, "Events"), h("div", {class: "v"}, events.length))),
+        res.error ? h("p", {class: "error"}, "Error: " + res.error) : null,
+        h("div", {class: "summary-chips", style: "margin-bottom:.6rem"}, Object.entries(names).map(([n, c]) =>
+          h("button", {class: "chip", type: "button", onclick: () => { filter.value = n; draw(); }}, n + (c > 1 ? " ×" + c : "")))),
+        images.length ? h("div", {class: "artifacts"}, h("h3", {}, "Charts"), images.map(a =>
+          h("figure", {style: "margin:0"}, h("img", {src: `/api/experiments/${data.id}/runs/${sel.value}/artifacts/${encodeURIComponent(a)}`, alt: a}), h("figcaption", {class: "small muted"}, a)))) : null,
+        others.length ? h("div", {}, h("h3", {}, "Other saved files"), h("div", {class: "summary-chips"}, others.map(a => {
+          const b = h("button", {class: "btn small", type: "button"}, a);
+          b.onclick = async () => { const f = await api(`/api/experiments/${data.id}/runs/${sel.value}/artifacts/${encodeURIComponent(a)}`); b.replaceWith(h("details", {open: true, style: "width:100%"}, h("summary", {}, a), h("pre", {class: "log"}, f.content))); };
+          return b;
+        }))) : null,
+        h("h3", {}, "Events"), h("div", {class: "events"})].filter(Boolean));
+      draw();
+    } catch (e) { out.replaceChildren(h("p", {class: "error"}, e.message)); }
+  }
+  sel.onchange = load; filter.oninput = draw; load();
+}
+
+async function renderLogs(data, body){
+  if (!data.logs.length){ body.append(h("div", {class: "empty"}, "No launcher logs saved for this chapter.")); return; }
+  const sel = h("select", {class: "field grow", "aria-label": "Log"}, data.logs.map(l => h("option", {value: l}, l)));
+  const out = h("pre", {class: "log"}, "Loading…");
+  body.append(h("div", {class: "row", style: "margin-bottom:.6rem"}, h("label", {class: "small muted"}, "Log"), sel), out);
+  const load = async () => {
+    out.textContent = "Loading…";
+    try { const l = await api(`/api/experiments/${data.id}/logs/${encodeURIComponent(sel.value)}`); out.textContent = (l.truncated ? "[earlier output truncated]\n" : "") + l.content; }
+    catch (e) { out.textContent = e.message; }
+  };
+  sel.onchange = load; load();
+}
+
+/* ---------- Experiment 7: cyber threat analysis ---------- */
+const safeLink = (href, text) => /^https?:\/\//i.test(href || "") ? h("a", {href, target: "_blank", rel: "noopener noreferrer"}, text || href) : (text || href || "");
+const STATUS_TEXT = {hit: "Threat found", no_match: "No match", not_configured: "Not configured", not_synced: "Feed not synced yet", error: "Error", ok: "Checked"};
+const fmtDate = s => s ? String(s).replace("T", " ").slice(0, 16) : "—";
+function table(columns, rows){
+  if (!rows.length) return h("p", {class: "muted small"}, "Nothing to show.");
+  return h("div", {style: "overflow:auto"}, h("table", {class: "data"},
+    h("tr", {}, columns.map(([label]) => h("th", {}, label))),
+    rows.map(r => h("tr", {}, columns.map(([, fn]) => { const v = fn(r); return h("td", {}, v == null || v === "" ? h("span", {class: "muted"}, "—") : v); })))));
+}
+function download(name, text, type){
+  const a = h("a", {href: URL.createObjectURL(new Blob([text], {type})), download: name}); document.body.append(a); a.click(); a.remove();
+}
+function reportMarkdown(r){
+  const L = [`# Cyber threat analysis report`, ``, `- **URL:** ${r.url}`, `- **Analysed:** ${r.analyzed_at}`, `- **Verdict:** ${r.verdict} (risk score ${r.risk_score}/100)`,
+    `- **Resolved IPs:** ${(r.resolved_ips || []).join(", ") || "none"}`, `- **MongoDB:** threat_intelligence.url_analyses _id ${r._id}`, ``, `## Summary`, ``, r.summary.replace(/\*\*/g, ""), ``];
+  if (r.reasons.length) { L.push(`## Why`, ``); r.reasons.forEach(x => L.push(`- ${x}`)); L.push(``); }
+  L.push(`## 1. Threat-feed analysis`, ``);
+  for (const f of r.feed_analysis){
+    L.push(`### ${f.source} — ${STATUS_TEXT[f.status] || f.status}`, ``);
+    if (f.message) L.push(f.message, ``);
+    (f.matches || []).forEach(m => L.push(`- ${m.match}: \`${m.value}\` ${[m.threat, m.threat_type, m.malware, m.event].filter(Boolean).join(" · ")}`));
+    if ((f.matches || []).length) L.push(``);
+  }
+  const g = r.gcve_analysis || {};
+  L.push(`## 2. GCVE vulnerability analysis`, ``);
+  (g.products || []).forEach(p => L.push(`- Product detected: ${p.label} (evidence \`${p.evidence}\`), ${p.total_vulnerabilities ?? "?"} vulnerabilities in GCVE`));
+  for (const [scope, s] of Object.entries(g.sightings || {})) L.push(`- Sightings referencing this ${scope === "url" ? "page" : "host"}: ${s.count}${s.ignored ? " (ignored: " + s.ignored + ")" : ""}`);
+  (g.vulnerabilities || []).forEach(v => L.push(`- ${v.id}: ${v.title || (v.description || "").slice(0, 120)} — CVSS ${v.cvss?.score ?? "n/a"}, EPSS ${v.epss ?? "n/a"}, known exploited: ${v.known_exploited ? "yes" : "no"} (${v.reason})`));
+  L.push(``, `## 3. Consolidated findings (duplicates removed)`, ``, `${r.dedup.raw_findings} raw findings → ${r.dedup.unique_findings} unique (${r.dedup.duplicates_removed} duplicates removed).`, ``,
+    `| Kind | Value | Sources |`, `|---|---|---|`);
+  r.findings.forEach(f => L.push(`| ${f.kind} | ${f.value.replace(/\|/g, "\\|")} | ${f.sources.join(", ")} |`));
+  L.push(``, `_${r.note}_`);
+  return L.join("\n");
+}
+function renderReport(r, box){
+  const g = r.gcve_analysis || {};
+  const verdictClass = "v-" + r.verdict.replace(/ /g, "-");
+  box.replaceChildren(h("div", {class: "report"},
+    h("div", {class: "verdict " + verdictClass},
+      h("span", {class: "label"}, r.verdict), h("span", {class: "score"}, `Risk ${r.risk_score}/100`),
+      h("code", {style: "color:var(--text);overflow-wrap:anywhere"}, r.url)),
+    h("div", {class: "stats"},
+      h("div", {class: "stat"}, h("div", {class: "k"}, "Raw findings"), h("div", {class: "v"}, r.dedup.raw_findings)),
+      h("div", {class: "stat"}, h("div", {class: "k"}, "Unique findings"), h("div", {class: "v"}, r.dedup.unique_findings)),
+      h("div", {class: "stat"}, h("div", {class: "k"}, "Duplicates removed"), h("div", {class: "v"}, r.dedup.duplicates_removed)),
+      h("div", {class: "stat"}, h("div", {class: "k"}, "Resolved IPs"), h("div", {class: "v small"}, (r.resolved_ips || []).join(", ") || "none")),
+      h("div", {class: "stat"}, h("div", {class: "k"}, "Analysed"), h("div", {class: "v small"}, fmtDate(r.analyzed_at) + " UTC · " + r.duration_seconds + " s"))),
+    markdown(r.summary),
+    r.reasons.length ? h("ul", {}, r.reasons.map(x => h("li", {}, x))) : null,
+    h("div", {class: "row no-print"},
+      h("button", {class: "btn", onclick: () => download(`threat-report-${r._id.slice(0, 8)}.md`, reportMarkdown(r), "text/markdown")}, "Download report (.md)"),
+      h("button", {class: "btn", onclick: () => download(`threat-report-${r._id.slice(0, 8)}.json`, JSON.stringify(r, null, 2), "application/json")}, "Download JSON"),
+      h("button", {class: "btn", onclick: () => window.print()}, "Print / Save as PDF"),
+      h("a", {class: "btn primary", href: "#cases?ref=" + encodeURIComponent("url:" + r.url) + "&title=" + encodeURIComponent(r.verdict + ": " + r.host)}, "Open case")),
+
+    h("h3", {}, "1 · Threat-feed analysis (URLhaus · ThreatFox · Botvrij.eu · VirusTotal)"),
+    h("div", {class: "feeds"}, r.feed_analysis.map(f => h("div", {class: "stat"},
+      h("div", {class: "row", style: "justify-content:space-between"}, h("strong", {}, f.source), h("span", {class: "badge st-" + f.status}, STATUS_TEXT[f.status] || f.status)),
+      h("div", {class: "small muted", style: "margin-top:.3rem"},
+        f.message || (f.status === "hit" ? `${f.matches.length} matching indicator${f.matches.length > 1 ? "s" : ""}` :
+          f.source === "Botvrij.eu" ? `${(f.indicators_checked || 0).toLocaleString()} indicators checked in MongoDB` : "Not listed")),
+      f.host ? h("div", {class: "small", style: "margin-top:.3rem"}, `Host has ${f.host.url_count} URLs in URLhaus (${f.host.online_urls} online)`) : null,
+      ...Object.entries(f.stats || {}).filter(([, s]) => s && !s.not_found).map(([scope, s]) => h("div", {class: "small", style: "margin-top:.3rem"},
+        `${scope === "url" ? "URL" : "Domain/IP"}: ${s.malicious || 0} malicious · ${s.suspicious || 0} suspicious · ${s.harmless || 0} harmless · ${s.undetected || 0} undetected`
+        + (s.reputation != null ? ` · reputation ${s.reputation}` : "")))))),
+    ...r.feed_analysis.filter(f => (f.matches || []).length).map(f => h("details", {class: "event flag", open: true},
+      h("summary", {}, h("span", {class: "ename"}, f.source), h("span", {class: "chip"}, f.matches.length + " matches")),
+      h("div", {class: "body"}, table([
+        ["Match", m => m.match], ["Indicator", m => h("code", {}, m.value)],
+        ["Threat / malware / event", m => [m.threat, m.threat_type, m.malware, m.event].filter(Boolean).join(" · ")
+          + (m.engines && m.engines.length ? " — " + m.engines.join(", ") : "")],
+        ["Status / type", m => m.url_status || m.ioc_type || m.type], ["Date", m => fmtDate(m.date_added || m.first_seen || m.event_date)],
+        ["Reference", m => safeLink(m.reference || m.event_url, "open")]], f.matches)))),
+
+    h("h3", {}, "2 · Vulnerability analysis (GCVE db.gcve.eu)"),
+    (g.errors || []).length ? h("p", {class: "error small"}, "Some GCVE queries failed: " + g.errors.join(", ")) : null,
+    h("div", {class: "stats"},
+      h("div", {class: "stat"}, h("div", {class: "k"}, "Products recognised"), h("div", {class: "v"}, (g.products || []).map(p => p.label).join(", ") || "none")),
+      ...Object.entries(g.sightings || {}).map(([scope, s]) => h("div", {class: "stat"}, h("div", {class: "k"}, `Sightings on this ${scope === "url" ? "page" : "host"}`),
+        h("div", {class: "v"}, String(s.count)), s.ignored ? h("div", {class: "small muted"}, "Ignored: " + s.ignored) : null)),
+      g.vendor ? h("div", {class: "stat"}, h("div", {class: "k"}, "Domain is a GCVE vendor"), h("div", {class: "v"}, `${g.vendor.vendor} · ${g.vendor.product_count} products`)) : null,
+      h("div", {class: "stat"}, h("div", {class: "k"}, "Linked vulnerabilities"), h("div", {class: "v"}, (g.vulnerabilities || []).length))),
+    (g.vulnerabilities || []).length ? table([
+      ["ID", v => safeLink(v.link, v.id)], ["Why linked", v => v.reason],
+      ["Title / description", v => (v.title || v.description || "").slice(0, 160)],
+      ["CVSS", v => v.cvss && v.cvss.score != null ? `${v.cvss.score} ${v.cvss.severity || ""}` : null],
+      ["EPSS", v => v.epss != null ? (v.epss * 100).toFixed(1) + "%" : null],
+      ["Known exploited", v => v.known_exploited == null ? null : h("span", {class: v.known_exploited ? "s-failed" : "muted"}, v.known_exploited ? "YES" : "no")]], g.vulnerabilities)
+      : h("p", {class: "muted small"}, "No vulnerability is linked to this URL through feeds, sightings or CVE IDs."),
+    ...(g.products || []).map(p => h("details", {class: "event"},
+      h("summary", {}, h("span", {class: "ename"}, p.label), h("span", {class: "chip"}, `matched "${p.evidence}"`), h("span", {class: "chip"}, `${p.total_vulnerabilities ?? "?"} known vulnerabilities`)),
+      h("div", {class: "body"}, h("p", {class: "small muted"}, "Context only — whether these apply depends on the installed version. Most recent in GCVE:"),
+        table([["ID", v => safeLink(`https://db.gcve.eu/vuln/${v.id.toLowerCase()}`, v.id)], ["Description", v => (v.description || v.title || "").slice(0, 180)],
+          ["CVSS", v => v.cvss && v.cvss.score != null ? `${v.cvss.score} ${v.cvss.severity || ""}` : null], ["Published", v => fmtDate(v.published)]], p.recent || [])))),
+
+    h("h3", {}, "3 · Consolidated findings — duplicates removed"),
+    h("p", {class: "small muted"}, `${r.dedup.raw_findings} findings from both analyses were merged by indicator / vulnerability ID into ${r.dedup.unique_findings}. Findings reported by several sources appear once with every source listed.`),
+    table([["Kind", f => f.kind], ["Value", f => h("code", {}, f.value)],
+      ["Sources", f => h("div", {class: "summary-chips"}, f.sources.map(s => h("span", {class: "chip"}, s)))],
+      ["Reports merged", f => String(f.evidence.length)]], r.findings),
+
+    h("h3", {}, "Stored in MongoDB"),
+    h("div", {class: "notice"},
+      h("div", {}, "Database ", h("code", {}, "threat_intelligence"), " → collection ", h("code", {}, "url_analyses"), " document ", h("code", {}, r._id)),
+      h("div", {}, `${r.findings.length} unique finding${r.findings.length === 1 ? "" : "s"} upserted into `, h("code", {}, "threat_findings"), " (one document per finding across all analyses)."),
+      h("div", {}, "Open in MongoDB Compass: ", h("code", {}, "mongodb://localhost:27018"))),
+    h("p", {class: "small muted"}, r.note)));
+}
+
+async function renderAnalysis(_, body){
+  const input = h("input", {class: "field", required: true, "aria-label": "URL to analyse", placeholder: "Paste a URL, domain or IP — e.g. http://example.com/login.php"});
+  const analyseBtn = h("button", {class: "btn primary"}, "Analyse");
+  const sampleBtn = h("button", {class: "btn", type: "button", hidden: true}, "Try a known-bad URL");
+  const progress = h("p", {class: "small muted", "aria-live": "polite", style: "margin:.6rem 0 0"});
+  const reportBox = h("div", {});
+  const sources = h("ul", {class: "sources"}, h("li", {}, h("span", {class: "dot"}), h("span", {class: "muted"}, "Checking sources…")));
+  const storage = h("div", {class: "panel-body"}, h("span", {class: "muted small"}, "…"));
+  const history = h("div", {});
+  const form = h("form", {class: "search-hero"}, input, analyseBtn, sampleBtn);
+  const refreshBtn = h("button", {class: "btn small no-print", type: "button"}, "Refresh feeds");
+  body.append(
+    pageHeader({crumbs: [{label: "Experiments", href: "#lab"}, {label: "Chapter 7", href: "#lab/ch07"}],
+      title: "URL Threat Analysis",
+      desc: "Check any URL against URLhaus, ThreatFox, Botvrij.eu and VirusTotal, and analyse related vulnerabilities with GCVE. Duplicate findings are merged and everything is stored in MongoDB. The URL itself is never opened."}),
+    h("div", {class: "grid-main"},
+      h("div", {class: "stack"},
+        h("section", {class: "panel"}, h("h2", {}, "Analyse a URL"), form, progress),
+        reportBox),
+      h("div", {class: "stack sticky-side"},
+        panel("Intelligence sources", refreshBtn, sources),
+        panel("Stored in MongoDB", null, storage),
+        panel("Recent analyses", null, history))));
+
+  const row = (state, name, info) => h("li", {}, h("span", {class: "dot " + (state === "ok" ? "ok" : state === "bad" ? "bad" : "")}), h("span", {class: "name"}, name), h("span", {class: "info"}, info));
+  async function loadStatus(){
+    try {
+      const s = await api("/api/cti/status");
+      const b = s.botvrij || {}, tf = s.threatfox || {};
+      sources.replaceChildren(
+        row(s.abusech_key_configured ? "ok" : "", "URLhaus", s.abusech_key_configured ? "Live API lookup" : "Needs abuse.ch key — ./scripts/set-api-key.sh abusech"),
+        row(s.abusech_key_configured && tf.state !== "error" ? "ok" : s.abusech_key_configured ? "bad" : "", "ThreatFox",
+          !s.abusech_key_configured ? "Needs abuse.ch key" : tf.state === "ready" ? `${(tf.indicators || 0).toLocaleString()} recent IOCs in MongoDB · live host search` : tf.state === "error" ? "Import failed: " + tf.error : "Importing recent IOCs…"),
+        row(b.state === "ready" ? "ok" : b.state === "error" ? "bad" : "", "Botvrij.eu",
+          b.state === "ready" ? `${(b.indicators || 0).toLocaleString()} indicators · synced ${fmtDate(b.last_sync)} UTC` : b.state === "syncing" ? "Importing into MongoDB…" : b.state === "error" ? "Sync failed: " + b.error : "Not imported yet"),
+        row(s.virustotal_key_configured ? "ok" : "", "VirusTotal", s.virustotal_key_configured ? "Lookups only — URLs are never submitted" : "Optional — ./scripts/set-api-key.sh virustotal"),
+        row("ok", "GCVE", "Queried live at db.gcve.eu"));
+      storage.replaceChildren(
+        h("div", {class: "cmd"}, h("code", {}, "mongodb://localhost:27018"), copyButton("mongodb://localhost:27018")),
+        h("dl", {class: "kv-list", style: "margin-top:.85rem"},
+          h("dt", {}, "Database"), h("dd", {}, h("code", {}, s.database)),
+          ...Object.entries(s.collections).flatMap(([k, v]) => [h("dt", {}, h("code", {}, k)), h("dd", {class: "muted"}, Number(v).toLocaleString())])));
+      if (s.sample_url){ sampleBtn.hidden = false; sampleBtn.onclick = () => { input.value = s.sample_url; form.requestSubmit(); }; }
+      if (b.state === "syncing" || tf.state === "syncing") setTimeout(() => body.isConnected && loadStatus(), 4000);
+    } catch (e) { sources.replaceChildren(h("li", {}, h("span", {class: "dot bad"}), h("span", {class: "error"}, "Status unavailable: " + e.message))); }
+  }
+  async function loadHistory(){
+    try {
+      const rows = await api("/api/cti/analyses?limit=10");
+      history.replaceChildren(rows.length ? h("div", {class: "history", style: "border:0;border-radius:0"}, ...rows.map(a => h("button", {type: "button", onclick: async () => {
+        progress.textContent = "Loading saved analysis…"; renderReport(await api("/api/cti/analyses/" + a._id), reportBox); progress.textContent = "Saved analysis loaded from MongoDB."; reportBox.scrollIntoView({behavior: "smooth"}); }},
+        h("span", {class: "u"}, a.url), h("span", {class: "badge v-" + a.verdict.replace(/ /g, "-")}, a.verdict))))
+        : h("div", {class: "empty-row"}, "No analyses yet."));
+    } catch (e) { history.replaceChildren(h("div", {class: "empty-row error"}, e.message)); }
+  }
+  refreshBtn.onclick = async () => { refreshBtn.disabled = true; await api("/api/cti/feeds/sync", {method: "POST"}); setTimeout(() => { refreshBtn.disabled = false; loadStatus(); }, 1500); };
+  form.onsubmit = async e => {
+    e.preventDefault();
+    analyseBtn.disabled = true; reportBox.replaceChildren();
+    progress.textContent = "Analysing — querying threat feeds and GCVE (usually 5–20 s)…";
+    try {
+      const r = await api("/api/cti/analyze", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({url: input.value.trim()})});
+      progress.textContent = ""; renderReport(r, reportBox); loadHistory(); loadStatus();
+    } catch (err) { progress.replaceChildren(h("span", {class: "error"}, err.message)); }
+    finally { analyseBtn.disabled = false; }
+  };
+  loadStatus(); loadHistory();
+}
+
+/* ---------- Overview (home) ---------- */
+const COMPASS_LINKS = [
+  ["Web app + URL analysis", "mongodb://localhost:27018"], ["Standalone · Ch 1–7, 15, 17", "mongodb://localhost:27019"],
+  ["Replica set · Ch 8–10, 14", "mongodb://localhost:27031/?directConnection=true"], ["Sharded cluster · Ch 11", "mongodb://localhost:27034"],
+  ["Polyglot · Ch 16, 18", "mongodb://localhost:27039"]];
+async function renderHome(){
+  const view = $("view-home");
+  const [health, cti, analyses] = await Promise.all([
+    api("/api/health").catch(() => ({})), api("/api/cti/status").catch(() => null), api("/api/cti/analyses?limit=6").catch(() => [])]);
+  const counts = statusCounts();
+  const indicators = cti ? (cti.collections.botvrij_indicators || 0) + (cti.collections.threatfox_indicators || 0) : 0;
+  const up = [health.database === "available", health.model === "available"].filter(Boolean).length;
+  const kpi = (k, v, s) => h("div", {class: "kpi"}, h("div", {class: "k"}, k), h("div", {class: "v"}, v), h("div", {class: "s"}, s));
+  view.replaceChildren(
+    pageHeader({crumbs: [{label: "Dashboard"}], title: "Overview",
+      desc: "MongoDB NoSQL project: 18 lab experiments on real Docker topologies, a threat-advisory assistant, and live URL threat analysis backed by public threat-intelligence feeds.",
+      actions: [h("a", {class: "btn", href: "#lab"}, "Browse experiments"), h("a", {class: "btn primary", href: "#analysis"}, "Analyse a URL")]}),
+    h("div", {class: "kpis"},
+      kpi("Experiments", String(chapters.length), `${counts.passed || 0} passed · ${counts.partial || 0} partial${counts.failed ? " · " + counts.failed + " failed" : ""}`),
+      kpi("Threat indicators", indicators.toLocaleString(), "Botvrij.eu + ThreatFox in MongoDB"),
+      kpi("URL analyses", String(cti ? cti.collections.url_analyses : 0), `${cti ? cti.collections.threat_findings : 0} unique findings stored`),
+      kpi("Services", `${up}/2`, `MongoDB ${health.database || "unknown"} · model ${health.model || "unknown"}`)),
+    h("div", {class: "grid-main wide-side"},
+      panel("Experiments", h("a", {class: "panel-link", href: "#lab"}, "View all →"),
+        gridTable([
+          {label: "#", cls: "num", render: c => c.id.slice(2)},
+          {label: "Experiment", cls: "title", render: c => shortTitle(c)},
+          {label: "Topology", cls: "hide-sm muted nowrap", render: c => TOPOLOGY_LABEL[c.topology] || c.topology},
+          {label: "Status", cls: "right", render: c => badge(statusOf(c))}], chapters, c => go(c.id))),
+      h("div", {class: "stack"},
+        panel("Recent URL analyses", h("a", {class: "panel-link", href: "#analysis"}, "Open →"),
+          analyses.length ? h("div", {class: "history", style: "border:0;border-radius:0"}, ...analyses.map(a =>
+            h("button", {type: "button", onclick: () => { location.hash = "#analysis"; }}, h("span", {class: "u"}, a.url), h("span", {class: "badge v-" + a.verdict.replace(/ /g, "-")}, a.verdict))))
+            : h("div", {class: "empty-row"}, "No analyses yet.")),
+        panel("MongoDB Compass", null, h("ul", {class: "sources"}, COMPASS_LINKS.map(([name, uri]) =>
+          h("li", {style: "grid-template-columns:minmax(0,1fr) auto;align-items:center"},
+            h("span", {}, h("span", {class: "name", style: "display:block"}, name), h("code", {class: "info", style: "display:block"}, uri)), copyButton(uri)))),
+          h("p", {class: "small muted", style: "margin:0;padding:.7rem 1.1rem;border-top:1px solid var(--line)"}, "Auth/TLS topologies (Ch 12–13) need the CA file and password — see each chapter page.")))));
+}
+
+/* ---------- Routing ---------- */
+const VIEWS = ["home", "assistant", "analysis", "lab", "platform"];
+const PLATFORM_ROUTES = ["tour", "cases", "ask", "moderation", "ops"];
+async function route(){
+  const [path, query] = location.hash.replace(/^#/, "").split("?");
+  const parts = path.split("/");
+  if (parts[0] === "lab" && parts[1] === "ch07" && parts[2] === "analysis"){ location.replace("#analysis"); return; }
+  const platformRoute = PLATFORM_ROUTES.includes(parts[0]) ? parts[0] : null;
+  const view = platformRoute ? "platform" : VIEWS.includes(parts[0]) ? parts[0] : "home";
+  for (const v of VIEWS) $("view-" + v).hidden = v !== view;
+  for (const a of document.querySelectorAll(".sb-nav a")){
+    if (a.dataset.route === (platformRoute || view)) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  }
+  if (platformRoute){ setNav(false); window.scrollTo(0, 0); loadChapters().catch(() => {}); Platform.render(platformRoute, parts.slice(1), new URLSearchParams(query || "")); return; }
+  setNav(false);
+  window.scrollTo(0, 0);
+  try { await loadChapters(); } catch (e) { $("chapter-list").replaceChildren(h("div", {class: "sb-loading error"}, "Could not load chapters")); }
+  const ch = view === "lab" && /^ch(0[1-9]|1[0-8])$/.test(parts[1] || "") ? parts[1] : "";
+  for (const b of $("chapter-list").querySelectorAll("button")) b.setAttribute("aria-current", String(b.dataset.ch === ch));
+  if (view === "home") renderHome();
+  else if (view === "analysis"){ $("view-analysis").replaceChildren(); renderAnalysis(null, $("view-analysis")); }
+  else if (view === "lab"){ if (!ch) overview(); else showChapter(ch, parts[2] || defaultTab(ch)); }
+}
+function setNav(open){
+  $("app").classList.toggle("nav-open", open);
+  $("scrim").hidden = !open;
+  $("menu-btn").setAttribute("aria-expanded", String(open));
+}
+$("menu-btn").onclick = () => setNav(!$("app").classList.contains("nav-open"));
+$("scrim").onclick = () => setNav(false);
+document.addEventListener("keydown", e => { if (e.key === "Escape") setNav(false); });
+window.addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>

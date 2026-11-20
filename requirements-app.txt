@@ -1,0 +1,3 @@
+# App-only extras (Chapters 16 and 18). Kept separate so the lab image, built from requirements.txt, is not rebuilt.
+cassandra-driver==3.29.2
+neo4j==5.28.1

@@ -1,0 +1,41 @@
+services:
+  mongo:
+    image: mongo:7.0
+    volumes: ["mongo-data:/data/db"]
+    # MongoDB Compass: mongodb://localhost:27018 (27017 is left free for a local MongoDB install).
+    ports: ["127.0.0.1:27018:27017"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand({ping:1})"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  app:
+    build: .
+    ports: ["127.0.0.1:8000:8000"]
+    # Lab source and saved run evidence, shown read-only on the Lab Experiments tab.
+    volumes: ["./labs:/work/labs:ro", "./results:/work/results:ro",
+              # Ch 13 secure set (TLS CA + admin password) and Ch 14 backups written by "Back up now".
+              "./.secrets:/secrets:ro", "./backups:/work/backups"]
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
+      # Experiment 7: free abuse.ch key (https://auth.abuse.ch/) enables URLhaus and ThreatFox lookups.
+      ABUSECH_AUTH_KEY: ${ABUSECH_AUTH_KEY:-}
+      # Optional VirusTotal key (https://www.virustotal.com/gui/my-apikey): set with ./scripts/set-api-key.sh virustotal
+      VT_API_KEY: ${VT_API_KEY:-}
+      # Chapters 13–18 reach the lab topologies through the ports they publish on the Docker host.
+      LAB_HOST: host.docker.internal
+      # Set CTI_PUBLIC=1 on a public deployment: every lab endpoint then answers 403.
+      CTI_PUBLIC: ${CTI_PUBLIC:-0}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on:
+      mongo:
+        condition: service_healthy
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [model]
+    volumes: ["ollama-data:/root/.ollama"]
+volumes:
+  mongo-data:
+  ollama-data:
