@@ -4,6 +4,8 @@
 "use strict";
 window.Platform = (() => {
   const S = {user: null, users: [], timer: null};
+  // Chart series colours: theme tokens, so charts follow the light/dark switch.
+  const SERIES = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)", "var(--s5)", "var(--s6)", "var(--s7)"];
   const css = `
 .sb-nav-2{padding-top:.6rem}
 .sb-nav a[hidden]{display:none!important}
@@ -19,7 +21,8 @@ window.Platform = (() => {
 .chart .mark{stroke:var(--accent);stroke-width:1.5}
 .legend{display:flex;flex-wrap:wrap;gap:.3rem .9rem;font-size:.75rem;color:var(--muted);margin-top:.35rem}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:.3rem;vertical-align:-1px}
-.c0{--c:#2f5bea}.c1{--c:#17803d}.c2{--c:#b25e09}.c3{--c:#9333ea}.c4{--c:#c4302b}
+.sev-critical{color:var(--bad);font-weight:600}.sev-high{color:var(--bad)}.sev-medium{color:var(--warn)}.sev-low{color:var(--idle)}
+.c0{--c:var(--s1)}.c1{--c:var(--s2)}.c2{--c:var(--s3)}.c3{--c:var(--s4)}.c4{--c:var(--s5)}
 .st-PRIMARY{color:var(--ok)}.st-SECONDARY{color:var(--accent)}.st-down,.st-UNKNOWN,.st-RECOVERING{color:var(--bad)}
 .notice.warn{border-left:3px solid var(--warn)}
 .verdicts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;margin:.75rem 0}
@@ -123,7 +126,7 @@ window.Platform = (() => {
     }
     series.forEach((s, i) => {
       const d = s.points.filter(p => p[1] != null).map((p, j) => `${j ? "L" : "M"}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join("");
-      const colour = ["#2f5bea", "#17803d", "#b25e09", "#9333ea", "#c4302b"][i % 5];
+      const colour = SERIES[i % 5];
       if (d) svg.append(el("path", {d, fill: "none", stroke: colour, "stroke-width": 1.6}));
       const real = s.points.filter(p => p[1] != null);
       if (real.length <= 30) for (const p of real) svg.append(el("circle", {cx: x(p[0]), cy: y(p[1]), r: 3, fill: colour}));
@@ -139,7 +142,7 @@ window.Platform = (() => {
     const x = t => L + (W - L - R) * Math.min(1, Math.max(0, (t - t0) / (t1 - t0)));
     const ns = "http://www.w3.org/2000/svg";
     const el = (tag, attrs, text) => { const n = document.createElementNS(ns, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); if (text != null) n.textContent = text; return n; };
-    const colour = s => s === "PRIMARY" ? "#17803d" : s === "SECONDARY" ? "#7b9bff" : "#c4302b";
+    const colour = s => s === "PRIMARY" ? "var(--ok)" : s === "SECONDARY" ? "var(--s1)" : "var(--bad)";
     const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, class: "chart", role: "img", "aria-label": "Member state over time"});
     names.forEach((name, i) => {
       const yy = T + i * rowH;
@@ -161,7 +164,7 @@ window.Platform = (() => {
     }
     return h("section", {class: "panel"}, h("h2", {style: "font-size:.88rem"}, "Member state over time"),
       names.length ? svg : h("p", {class: "muted small"}, "No samples yet — start the lab and wait 10 s."),
-      h("div", {class: "legend"}, [["PRIMARY", "#17803d"], ["SECONDARY", "#7b9bff"], ["other / down", "#c4302b"], ["election", "var(--accent)"]].map(([n, c]) =>
+      h("div", {class: "legend"}, [["PRIMARY", "var(--ok)"], ["SECONDARY", "var(--s1)"], ["other / down", "var(--bad)"], ["election", "var(--accent)"]].map(([n, c]) =>
         h("span", {}, h("i", {style: `background:${c}`}), n))));
   }
   function memberSeries(series, field){
@@ -494,9 +497,9 @@ window.Platform = (() => {
         panel("Last 7 days by kind", null, h("div", {class: "panel-body"}, h("div", {style: "display:grid;grid-template-columns:repeat(7,1fr);gap:.5rem;align-items:end;height:140px"},
           sum.days.map(d => h("div", {title: JSON.stringify(d.counts), style: "display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:1px"},
             kinds.map((k, i) => { const v = Object.entries(d.counts).filter(([a]) => a.startsWith(k + ".")).reduce((s, [, n]) => s + n, 0);
-              return v ? h("div", {style: `height:${Math.max(2, 120 * v / max)}px;background:${["#2f5bea", "#17803d", "#b25e09", "#9333ea", "#c4302b", "#0891b2", "#64748b"][i % 7]};border-radius:2px`}) : null; }),
+              return v ? h("div", {style: `height:${Math.max(2, 120 * v / max)}px;background:${SERIES[i % 7]};border-radius:2px`}) : null; }),
             h("div", {class: "small muted", style: "text-align:center;margin-top:.3rem"}, d.day.slice(5))))),
-          h("div", {class: "legend"}, kinds.map((k, i) => h("span", {}, h("i", {style: `background:${["#2f5bea", "#17803d", "#b25e09", "#9333ea", "#c4302b", "#0891b2", "#64748b"][i % 7]}`}), k))))),
+          h("div", {class: "legend"}, kinds.map((k, i) => h("span", {}, h("i", {style: `background:${SERIES[i % 7]}`}), k))))),
         h("div", {style: "height:1rem"}),
         panel("Events", h("span", {class: "muted small"}, log.events.length + " shown · from Cassandra cti_audit"), gridTable([
           {label: "Time", cls: "nowrap", render: e => fmtDate(e.ts)}, {label: "Who", render: e => e.actor}, {label: "Action", render: e => h("code", {}, e.action)},
@@ -572,6 +575,67 @@ window.Platform = (() => {
       {label: "Org role", render: u => { if (!u.org) return "—"; const s = h("select", {class: "field inline-select"}, ["member", "admin"].map(r => h("option", {value: r, selected: r === u.org_role}, r))); s.onchange = () => save(u, {org_role: s.value}); return s; }}], d.users)));
   }
 
+  // ------------------------------------------------------------------ My PC (read-only Windows scan)
+  const SCAN_CMD = "powershell -ExecutionPolicy Bypass -File .\\scripts\\scan-pc.ps1";
+  const sevBadge = s => h("span", {class: "badge sev-" + s}, s);
+  async function pcPage(){
+    const V = view();
+    const header = pageHeader({crumbs: [{label: "Security"}], title: "My PC",
+      desc: "A read-only scan of this Windows PC — Defender, firewall, Windows updates, installed programs and network — checked against endoflife.date, GCVE, ThreatFox and Botvrij.eu, and stored in MongoDB (threat_lab.pc_scans). The Threat Assistant answers questions about it.",
+      actions: [copyButton(SCAN_CMD, "Copy scan command")]});
+    const how = h("section", {class: "panel"}, h("h2", {}, "Run a scan"),
+      h("p", {class: "muted small"}, "Open Windows PowerShell in the project folder (C:\\Users\\…\\NoSQL-Projects-main\\NoSQL-Projects-main) and run the command below. It only reads information, changes nothing, and sends the result to this dashboard on localhost."),
+      h("div", {class: "cmd"}, h("code", {}, SCAN_CMD), copyButton(SCAN_CMD)));
+    let d;
+    try { d = await api("/api/pc/scans/latest"); }
+    catch (err){
+      if (err.status === 404){ V.replaceChildren(header, h("div", {class: "notice"}, "No scan yet."), how); return; }
+      throw err;
+    }
+    const s = d.system || {}, def = d.defender || {}, c = d.counts || {};
+    const tone = {"No threats found": "s-passed", "Low risk": "s-passed", "Updates recommended": "s-partial", "Needs attention": "s-partial", "High risk": "s-failed"}[d.verdict] || "";
+    const onOff = v => v ? "on" : v === false ? "OFF" : "unknown";
+    let history = [];
+    try { history = await api("/api/pc/scans?limit=10"); } catch (e) {}
+    V.replaceChildren(header,
+      h("div", {class: "tiles"},
+        tile("Verdict", h("span", {class: "badge " + tone}, d.verdict), "risk score " + d.risk_score + " / 100"),
+        tile("Findings", String((d.findings || []).length), `${c.critical || 0} critical · ${c.high || 0} high · ${c.medium || 0} medium · ${c.low || 0} low`),
+        tile("Defender", onOff(def.real_time_protection), "real-time protection · " + (def.detections || []).length + " detection(s)"),
+        tile("Windows", s.display_version || String(s.build || "—"), "build " + s.build + (s.ubr ? "." + s.ubr : "") + " · " + (s.os_name || "").replace(/^Microsoft /, "")),
+        tile("Scanned", fmtDate(d.received_at), (s.computer || "") + " · " + (d.software || []).length + " programs")),
+      panel("Findings", h("span", {class: "muted small"}, "Ask the Threat Assistant: “what threats are on my PC?”"),
+        gridTable([
+          {label: "Severity", cls: "nowrap", render: f => sevBadge(f.severity)},
+          {label: "Finding", render: f => h("div", {}, h("div", {class: "title"}, f.title), h("div", {class: "small muted"}, f.summary),
+            h("div", {class: "small", style: "margin-top:.3rem"}, h("strong", {}, "What to do: "), f.mitigation),
+            h("div", {class: "small", style: "margin-top:.3rem;overflow-wrap:anywhere"},
+              h("a", {href: f.source.startsWith("http") ? f.source : "#pc", target: "_blank", rel: "noopener", style: "margin-right:.6rem"}, h("code", {}, f._id)),
+              ...((f.evidence || {}).gcve_recent_vulnerabilities || []).map(v => h("a", {href: v.link, target: "_blank", rel: "noopener", style: "margin-right:.6rem"}, v.id))))},
+          {label: "Area", cls: "nowrap", render: f => f.category}],
+          d.findings || [])),
+      h("div", {class: "charts"},
+        panel("Programs checked", h("span", {class: "muted small"}, "endoflife.date"),
+          gridTable([{label: "Program", render: r => r.program}, {label: "Version", cls: "nowrap", render: r => h("code", {}, r.version)},
+            {label: "Status", render: r => h("span", {class: "badge " + (r.status === "up to date" ? "s-passed" : r.status === "end of life" ? "s-failed" : "s-partial")}, r.status)}],
+            d.software_checked || [])),
+        panel("Defender and firewall", null,
+          h("dl", {class: "kv-list", style: "padding:1rem 1.25rem"},
+            h("dt", {}, "Antivirus"), h("dd", {}, onOff(def.antivirus_enabled)),
+            h("dt", {}, "Real-time protection"), h("dd", {}, onOff(def.real_time_protection)),
+            h("dt", {}, "Tamper protection"), h("dd", {}, onOff(def.tamper_protection)),
+            h("dt", {}, "Definitions updated"), h("dd", {}, def.signatures_updated ? fmtDate(def.signatures_updated) : "—"),
+            h("dt", {}, "Last quick scan"), h("dd", {}, def.quick_scan_end ? fmtDate(def.quick_scan_end) : "—"),
+            h("dt", {}, "Firewall"), h("dd", {}, (d.firewall || []).map(p => p.profile + " " + onOff(p.enabled)).join(" · ") || "—")))),
+      panel("Network", h("span", {class: "muted small"}, `${(d.listening || []).length} listening ports · ${(d.connections || []).length} connections to public IPs (checked against ThreatFox and Botvrij.eu)`),
+        gridTable([{label: "Address", cls: "nowrap", render: r => h("code", {}, r.address)}, {label: "Port", cls: "nowrap", render: r => String(r.port)}, {label: "Program", render: r => r.process || "—"}],
+          (d.listening || []).filter(r => r.address === "0.0.0.0" || r.address === "::"))),
+      panel("Scan history", h("span", {class: "muted small"}, "MongoDB: threat_lab.pc_scans"),
+        gridTable([{label: "Received", cls: "nowrap", render: r => fmtDate(r.received_at)}, {label: "Verdict", render: r => r.verdict},
+          {label: "Score", cls: "nowrap", render: r => String(r.risk_score)}], history)),
+      how);
+  }
+
   // ------------------------------------------------------------------ router entry
   async function render(name, rest, params){
     stopTimer();
@@ -587,6 +651,7 @@ window.Platform = (() => {
       else if (name === "ask") await askPage();
       else if (name === "moderation") await moderation(rest[0]);
       else if (name === "ops") await ops(rest[0], params);
+      else if (name === "pc") await pcPage();
     } catch (err){ target.replaceChildren(pageHeader({title: name[0].toUpperCase() + name.slice(1)}), errorBox(err)); }
     if (seq === S.seq) $("view-platform").replaceChildren(target);
   }

@@ -29,7 +29,7 @@ your API keys (`.env`). Docker keeps the data between restarts, so start-up take
 
 | Connect to | For |
 |---|---|
-| `mongodb://localhost:27018` | Web app data: `threat_lab` (Threat Assistant) and `threat_intelligence` (URL Threat Analysis) |
+| `mongodb://localhost:27018` | Web app data: `threat_lab` (Threat Assistant, PC scans in `pc_scans`) and `threat_intelligence` (URL Threat Analysis) |
 | Chapter page → *Inspect in MongoDB Compass* | Lab data `college_chNN` — run that chapter first, e.g. `./scripts/lab.sh ch10 --mode quick` |
 
 Lab ports: standalone 27019 · replica set 27031–27033 · sharded 27034 · auth/TLS 27035 · secure 27036–27038 · polyglot 27039.
@@ -45,6 +45,10 @@ password from `cat ~/projects/NoSQL-Projects-main/.secrets/password` (keep it of
    `threat_findings` in Compass. VirusTotal's free key allows about 2 analyses per minute.
 3. **Threat Assistant** — search `openssh`; ask “Which active Linux threats in this dataset need attention?”,
    then “What should I do about the first one?”, then “What is the weather in Tokyo?”.
+   **Scan this PC:** in Windows PowerShell, in the project folder, run
+   `powershell -ExecutionPolicy Bypass -File .\scripts\scan-pc.ps1` (read-only: Defender, firewall, Windows updates,
+   installed programs, network). Open **My PC**, then ask the assistant “What threats are on my PC right now?”,
+   “How do I fix the first one?” and “Is Defender protecting my PC and is my firewall on?”. In Compass: `threat_lab.pc_scans`.
 4. **Experiments** — open chapters and use their *Overview*, *Implementation* and *Results* tabs.
    Optionally run one live (e.g. Ch 10 or Ch 11) and show its database in Compass.
    Run one lab topology at a time and stop it with the command shown on its page.
