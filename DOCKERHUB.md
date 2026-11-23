@@ -9,7 +9,17 @@ three-database false-positive review.
 **Source code:** https://github.com/kashish1740/nosql-threat-intelligence-lab
 This image is rebuilt and published automatically on every push to that repository's `main` branch.
 
-## Run it
+## Run it — one command
+
+```bash
+docker run -p 8000:8000 kashish1740/threat-intelligence-lab:full
+```
+
+The `full` tag is all-in-one: MongoDB 7.0, Ollama with `qwen2.5:1.5b` and `all-minilm` built in, and the public
+threat feeds (Botvrij, ThreatFox, the embedded report index) already loaded. Open **http://localhost:8000**.
+Add `--gpus all` on a machine with an NVIDIA GPU for faster answers, and `-v cti-data:/data/db` to keep your data.
+
+## Run it — small image with separate services
 
 ```bash
 curl -O https://raw.githubusercontent.com/kashish1740/nosql-threat-intelligence-lab/main/compose.hub.yaml
@@ -25,7 +35,8 @@ The lab chapters themselves (replica sets, sharding, TLS, Cassandra, Neo4j) run 
 
 ## Tags
 
-- `latest` — newest build of `main`
+- `full` — all-in-one image (app + MongoDB + Ollama + models + seed data), newest build of `main`
+- `latest` — newest build of `main`, app only (about 80 MB)
 - `sha-<commit>` — one tag per commit, to run an exact version
 
 Optional API keys for URL analysis (`VT_API_KEY`, `ABUSECH_AUTH_KEY`) go in a local `.env` file; none are in the image.

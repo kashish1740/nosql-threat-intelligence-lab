@@ -1,0 +1,58 @@
+# All-in-one image: dashboard + MongoDB 7.0 + Ollama with the models built in + public seed data.
+#   docker run -p 8000:8000 kashish1740/threat-intelligence-lab:full      → http://localhost:8000
+# The small `latest` image (Dockerfile) still expects MongoDB and Ollama as separate containers.
+# Seed data = public feeds only (Botvrij, ThreatFox, the embedded report index); no keys, lookups or chats.
+
+FROM mongo:7.0 AS mongo-bin
+
+# Ollama runtime: CPU back-ends plus the CUDA 12 back-end (used when the container is started with --gpus all).
+FROM ollama/ollama:latest AS ollama-bin
+RUN rm -rf /usr/lib/ollama/cuda_v13 /usr/lib/ollama/mlx_* /usr/lib/ollama/include /usr/lib/ollama/vulkan
+
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive \
+    PATH=/opt/venv/bin:$PATH \
+    MONGO_URI=mongodb://127.0.0.1:27017 \
+    OLLAMA_HOST=127.0.0.1:11434 \
+    OLLAMA_BASE_URL=http://127.0.0.1:11434 \
+    OLLAMA_MODEL=qwen2.5:1.5b \
+    OLLAMA_KEEP_ALIVE=30m \
+    LAB_HOST=host.docker.internal \
+    CTI_PUBLIC=0
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl libcurl4t64 libgssapi-krb5-2 python3.12 python3.12-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=mongo-bin /usr/bin/mongod /usr/bin/mongodump /usr/bin/mongorestore /usr/local/bin/
+COPY --from=ollama-bin /usr/bin/ollama /usr/bin/ollama
+COPY --from=ollama-bin /usr/lib/ollama /usr/lib/ollama
+RUN mongod --version && mongorestore --version && (ollama --version || true)
+
+WORKDIR /work
+COPY requirements.txt requirements-app.txt ./
+RUN python3.12 -m venv /opt/venv \
+    && pip install --no-cache-dir --default-timeout=120 --retries 8 -r requirements.txt -r requirements-app.txt
+
+# Models, downloaded once at build time so the container works offline.
+RUN (ollama serve >/tmp/ollama.log 2>&1 &) \
+    && for i in $(seq 1 60); do ollama list >/dev/null 2>&1 && break; sleep 1; done \
+    && ollama pull qwen2.5:1.5b && ollama pull all-minilm && ollama list
+
+# Public seed data restored into the image's own database.
+COPY seed /tmp/seed
+RUN mkdir -p /data/db \
+    && mongod --dbpath /data/db --bind_ip 127.0.0.1 --fork --logpath /tmp/mongod.log \
+    && mongorestore --quiet --gzip --dir /tmp/seed \
+    && python3 -c "import datetime; from pymongo import MongoClient; c=MongoClient('mongodb://127.0.0.1:27017'); d=c.threat_intelligence; d.feed_status.update_one({'_id':'threatfox'},{'\$set':{'state':'ready','error':None}}); n=c.cti_platform.report_chunks.estimated_document_count(); now=datetime.datetime.now(datetime.timezone.utc); c.cti_platform.settings.update_one({'_id':'ask_index'},{'\$set':{'state':'ready','error':None,'done':n,'total':n,'chunks':n,'started_at':now,'finished_at':now}},upsert=True); print({x: d[x].estimated_document_count() for x in d.list_collection_names()}, 'report_chunks', n)" \
+    && mongod --dbpath /data/db --shutdown \
+    && rm -rf /tmp/seed /tmp/mongod.log
+
+COPY app app
+COPY data data
+COPY labs labs
+COPY scripts/full-entrypoint.sh /usr/local/bin/full-entrypoint.sh
+RUN chmod +x /usr/local/bin/full-entrypoint.sh
+
+EXPOSE 8000
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 CMD curl -fs http://127.0.0.1:8000/ >/dev/null || exit 1
+ENTRYPOINT ["/usr/local/bin/full-entrypoint.sh"]

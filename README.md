@@ -12,7 +12,14 @@ A local threat-intelligence web app and 18 NoSQL laboratory chapters using Mongo
 Every push to `main` runs the tests, rebuilds the dashboard image and publishes it to Docker Hub as `latest`
 (plus a `sha-<commit>` tag), so both links always show the current version.
 
-**Run from Docker Hub (no build):**
+**Run from Docker Hub, one command (all-in-one `full` image, about 2–3 GB):** MongoDB, Ollama with
+`qwen2.5:1.5b` + `all-minilm`, and the public threat feeds are built in, so nothing else is needed.
+
+```bash
+docker run -p 8000:8000 kashish1740/threat-intelligence-lab:full
+```
+
+**Or the small `latest` image (about 80 MB) with separate MongoDB and Ollama containers:**
 
 ```bash
 docker compose -f compose.hub.yaml --profile model up -d

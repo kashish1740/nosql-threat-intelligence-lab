@@ -7,3 +7,4 @@
 *.zip binary
 *.docx binary
 *.archive binary
+*.gz binary

@@ -5,7 +5,9 @@
 - Docker Hub: https://hub.docker.com/r/kashish1740/threat-intelligence-lab
 
 To publish a change: `git add . && git commit -m "what changed" && git push` in Ubuntu. GitHub updates at once;
-the Action (repo → Actions tab) tests, rebuilds and pushes the Docker Hub image within about 3 minutes.
+the Action (repo → Actions tab) tests, rebuilds and pushes the Docker Hub image within about 3 minutes
+(`latest`, about 80 MB), then the all-in-one `full` image (about 2–3 GB) within about 15 minutes more.
+Anyone can run the whole project with one command: `docker run -p 8000:8000 kashish1740/threat-intelligence-lab:full`.
 
 Everything is already installed and saved: code, MongoDB data, the AI model, imported threat feeds and
 your API keys (`.env`). Docker keeps the data between restarts, so start-up takes about a minute.
